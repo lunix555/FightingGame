@@ -110,12 +110,14 @@ const SFX_VOLUME_OFFSETS_DB := {
 const UI_FONT_PATH := "res://assets/fonts/simhei.ttf"
 const GENERATED_BLOCK_SOUND_KEY := "block_success"
 const GENERATED_BGM_KEY := "battle_bgm"
-const BGM_MAIN_MENU_KEY := "bgm_menu_neon"
+const BGM_MAIN_MENU_KEY := "bgm_main"
+const BGM_MENU_FALLBACK_KEY := "bgm_menu_neon"
 const BGM_CHARACTER_SELECT_KEY := "bgm_character_select_fire"
 const BGM_STAGE_SELECT_KEY := "bgm_stage_select_grid"
 const BGM_NEON_STREET_KEY := "bgm_neon_street"
 const BGM_BATTLE_KEYS := ["bgm_battle_drive", "bgm_battle_rush", "bgm_battle_arcade"]
 const BGM_PATHS := {
+	BGM_MAIN_MENU_KEY: "res://assets/audio/BGM/BGM_Main.wav",
 	BGM_NEON_STREET_KEY: "res://assets/audio/BGM/BGM_Neon Street.wav",
 }
 const FIGHTER_GROUND_Y := -0.42
@@ -625,6 +627,7 @@ var round_winner := 0
 var round_number := 0
 var round_pause_frames := 0
 var round_intro_frames := 0
+var round_fight_sfx_played := false
 var ko_slowmo_frames := 0
 var ko_slowmo_tick_counter := 0
 var game_frame := 0
@@ -1303,7 +1306,7 @@ func _show_main_menu() -> void:
 	flow_state = FlowState.MAIN_MENU
 	_unload_battle_scene()
 	_hide_center_overlay()
-	_play_bgm(BGM_MAIN_MENU_KEY, -7.0)
+	_play_menu_bgm()
 	_set_menu(
 		"3D 格斗原型",
 		"网页端 1V1 格斗测试",
@@ -1317,7 +1320,7 @@ func _show_main_menu() -> void:
 func _show_mode_select() -> void:
 	flow_state = FlowState.MODE_SELECT
 	_unload_battle_scene()
-	_play_bgm(BGM_MAIN_MENU_KEY, -7.0)
+	_play_menu_bgm()
 	_set_menu(
 		"选择模式",
 		"选择 2P 由电脑控制，还是本地玩家控制。",
@@ -1370,7 +1373,7 @@ func _reset_character_select_state() -> void:
 
 func _show_character_select() -> void:
 	flow_state = FlowState.CHARACTER_SELECT
-	_play_bgm(BGM_CHARACTER_SELECT_KEY, -9.0)
+	_play_menu_bgm()
 	_reset_character_select_state()
 	_hide_menu()
 
@@ -1753,7 +1756,7 @@ func _character_select_ready() -> bool:
 
 func _show_stage_select() -> void:
 	flow_state = FlowState.STAGE_SELECT
-	_play_bgm(BGM_STAGE_SELECT_KEY, -10.0)
+	_play_menu_bgm()
 	stage_cursor_index = 0
 	_hide_menu()
 
@@ -2138,7 +2141,7 @@ func _begin_match() -> void:
 
 
 func _show_battle_loading_screen() -> void:
-	_play_bgm(BGM_STAGE_SELECT_KEY, -12.0)
+	_play_menu_bgm()
 	_set_menu(
 		"加载战斗中",
 		"正在创建战斗场景、角色模型和对战界面，请稍等。",
@@ -2177,6 +2180,7 @@ func _start_round() -> void:
 	_reset_fighters()
 	round_number += 1
 	round_intro_frames = ROUND_INTRO_FRAMES
+	round_fight_sfx_played = false
 	last_log = "第 %d 回合准备" % round_number
 	flow_state = FlowState.ROUND_INTRO
 	_hide_menu()
@@ -2187,7 +2191,6 @@ func _start_round() -> void:
 func _start_fighting() -> void:
 	flow_state = FlowState.FIGHTING
 	round_frame = 0
-	_play_sfx("ui_round_fight")
 	last_log = "开战"
 	_hide_center_overlay()
 
@@ -2375,6 +2378,9 @@ func _update_round_intro_overlay() -> void:
 	if round_intro_frames > ROUND_FIGHT_FRAMES:
 		_show_center_message("第 %d 回合" % round_number, Color(1.0, 0.9, 0.25))
 	else:
+		if not round_fight_sfx_played:
+			_play_sfx("ui_round_fight")
+			round_fight_sfx_played = true
 		_show_center_message("开战！", Color(0.35, 1.0, 0.42))
 	_set_fade_alpha(0.0)
 
@@ -3311,6 +3317,13 @@ func _play_battle_bgm() -> void:
 	_play_bgm(current_battle_bgm_key, -10.0)
 
 
+func _play_menu_bgm() -> void:
+	if _play_bgm(BGM_MAIN_MENU_KEY, -7.0):
+		return
+	push_warning("Menu BGM failed, falling back to generated BGM: %s" % BGM_MAIN_MENU_KEY)
+	_play_bgm(BGM_MENU_FALLBACK_KEY, -7.0)
+
+
 func _stop_battle_bgm() -> void:
 	var battle_bgm_key := current_battle_bgm_key
 	current_battle_bgm_key = ""
@@ -3340,13 +3353,80 @@ func _play_bgm(bgm_key: String, volume_db: float) -> bool:
 
 
 func _load_looping_bgm_stream(path: String) -> AudioStream:
-	var stream := ResourceLoader.load(path) as AudioStream
+	var stream: AudioStream = null
+	if path.get_extension().to_lower() == "wav":
+		stream = _load_wav_stream_from_file(path)
+	if stream == null:
+		stream = ResourceLoader.load(path) as AudioStream
 	if stream is AudioStreamWAV:
 		var wav_stream := stream as AudioStreamWAV
 		wav_stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 		wav_stream.loop_begin = 0
 		wav_stream.loop_end = -1
 	return stream
+
+
+func _load_wav_stream_from_file(path: String) -> AudioStreamWAV:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return null
+	var bytes := file.get_buffer(file.get_length())
+	if bytes.size() < 44:
+		return null
+	if bytes.slice(0, 4).get_string_from_ascii() != "RIFF" or bytes.slice(8, 12).get_string_from_ascii() != "WAVE":
+		return null
+
+	var audio_format := 0
+	var channels := 0
+	var sample_rate := 0
+	var bits_per_sample := 0
+	var data_offset := -1
+	var data_size := 0
+	var offset := 12
+	while offset + 8 <= bytes.size():
+		var chunk_id := bytes.slice(offset, offset + 4).get_string_from_ascii()
+		var chunk_size := _u32_le(bytes, offset + 4)
+		var chunk_data_offset := offset + 8
+		if chunk_id == "fmt ":
+			audio_format = _u16_le(bytes, chunk_data_offset)
+			channels = _u16_le(bytes, chunk_data_offset + 2)
+			sample_rate = _u32_le(bytes, chunk_data_offset + 4)
+			bits_per_sample = _u16_le(bytes, chunk_data_offset + 14)
+		elif chunk_id == "data":
+			data_offset = chunk_data_offset
+			data_size = mini(chunk_size, bytes.size() - data_offset)
+			break
+		offset = chunk_data_offset + chunk_size + int(chunk_size % 2)
+
+	if audio_format != 1 or data_offset < 0 or data_size <= 0:
+		return null
+	var stream := AudioStreamWAV.new()
+	stream.mix_rate = sample_rate
+	stream.stereo = channels == 2
+	match bits_per_sample:
+		8:
+			stream.format = AudioStreamWAV.FORMAT_8_BITS
+		16:
+			stream.format = AudioStreamWAV.FORMAT_16_BITS
+		_:
+			return null
+	stream.data = bytes.slice(data_offset, data_offset + data_size)
+	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	stream.loop_begin = 0
+	stream.loop_end = int(data_size / maxi(1, int(channels * bits_per_sample / 8)))
+	return stream
+
+
+func _u16_le(bytes: PackedByteArray, offset: int) -> int:
+	if offset + 1 >= bytes.size():
+		return 0
+	return int(bytes[offset]) | (int(bytes[offset + 1]) << 8)
+
+
+func _u32_le(bytes: PackedByteArray, offset: int) -> int:
+	if offset + 3 >= bytes.size():
+		return 0
+	return int(bytes[offset]) | (int(bytes[offset + 1]) << 8) | (int(bytes[offset + 2]) << 16) | (int(bytes[offset + 3]) << 24)
 
 
 func _set_bgm_volume(volume_db: float) -> void:

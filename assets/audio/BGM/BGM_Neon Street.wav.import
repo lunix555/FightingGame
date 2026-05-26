@@ -2,7 +2,7 @@
 
 importer="wav"
 type="AudioStreamWAV"
-uid="uid://dtwilfiehp81i"
+uid="uid://cnsbnnncucb8d"
 path="res://.godot/imported/BGM_Neon Street.wav-f68e54b9f23080b76732593446d2f3a0.sample"
 
 [deps]
@@ -18,7 +18,7 @@ force/max_rate=false
 force/max_rate_hz=44100
 edit/trim=false
 edit/normalize=false
-edit/loop_mode=1
+edit/loop_mode=0
 edit/loop_begin=0
 edit/loop_end=-1
 compress/mode=2
