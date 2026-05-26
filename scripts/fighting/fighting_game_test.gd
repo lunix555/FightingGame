@@ -34,6 +34,10 @@ const SOUND_PATHS := {
 const UI_FONT_PATH := "res://assets/fonts/simhei.ttf"
 const GENERATED_BLOCK_SOUND_KEY := "block_success"
 const GENERATED_BGM_KEY := "battle_bgm"
+const BGM_MAIN_MENU_KEY := "bgm_menu_neon"
+const BGM_CHARACTER_SELECT_KEY := "bgm_character_select_fire"
+const BGM_STAGE_SELECT_KEY := "bgm_stage_select_grid"
+const BGM_BATTLE_KEYS := ["bgm_battle_drive", "bgm_battle_rush", "bgm_battle_arcade"]
 const FIGHTER_GROUND_Y := -0.42
 const P1_SPAWN := Vector3(-1.35, FIGHTER_GROUND_Y, 0.0)
 const P2_SPAWN := Vector3(1.35, FIGHTER_GROUND_Y, 0.0)
@@ -61,7 +65,7 @@ const DEFAULT_MOVE_RESOURCE_FOLDER := "res://data/moves/prototype"
 const CHARACTER_MOVE_RESOURCE_FOLDERS := {
 	0: "res://data/moves/prototype",
 }
-const BUILD_ID := "20260526-projectile-vfx-variety"
+const BUILD_ID := "20260526-menu-bgm-git-dir"
 const MENU_PANEL_WIDTH := 760.0
 const MENU_PANEL_HEIGHT := 560.0
 const MENU_PANEL_EXPANDED_HEIGHT := 720.0
@@ -481,6 +485,10 @@ var ui_font: FontFile
 var sfx_players: Array[AudioStreamPlayer] = []
 var sfx_player_index := 0
 var bgm_player: AudioStreamPlayer
+var current_bgm_key := ""
+var current_battle_bgm_key := ""
+var current_bgm_volume_db := -16.0
+var audio_unlocked_by_input := false
 var ui_style_cache := {}
 var ui_texture_cache := {}
 var sound_stream_cache := {}
@@ -614,10 +622,9 @@ func _setup_audio() -> void:
 		add_child(player)
 		sfx_players.append(player)
 	bgm_player = AudioStreamPlayer.new()
-	bgm_player.name = "BattleBgmPlayer"
+	bgm_player.name = "BgmPlayer"
 	bgm_player.bus = "Master"
-	bgm_player.volume_db = -18.0
-	bgm_player.stream = _generated_battle_bgm()
+	bgm_player.volume_db = current_bgm_volume_db
 	add_child(bgm_player)
 
 
@@ -1164,6 +1171,7 @@ func _show_main_menu() -> void:
 	flow_state = FlowState.MAIN_MENU
 	_unload_battle_scene()
 	_hide_center_overlay()
+	_play_bgm(BGM_MAIN_MENU_KEY, -7.0)
 	_set_menu(
 		"3D 格斗原型",
 		"网页端 1V1 格斗测试",
@@ -1177,6 +1185,7 @@ func _show_main_menu() -> void:
 func _show_mode_select() -> void:
 	flow_state = FlowState.MODE_SELECT
 	_unload_battle_scene()
+	_play_bgm(BGM_MAIN_MENU_KEY, -7.0)
 	_set_menu(
 		"选择模式",
 		"选择 2P 由电脑控制，还是本地玩家控制。",
@@ -1229,6 +1238,7 @@ func _reset_character_select_state() -> void:
 
 func _show_character_select() -> void:
 	flow_state = FlowState.CHARACTER_SELECT
+	_play_bgm(BGM_CHARACTER_SELECT_KEY, -9.0)
 	_reset_character_select_state()
 	_hide_menu()
 
@@ -1610,6 +1620,7 @@ func _character_select_ready() -> bool:
 
 func _show_stage_select() -> void:
 	flow_state = FlowState.STAGE_SELECT
+	_play_bgm(BGM_STAGE_SELECT_KEY, -10.0)
 	stage_cursor_index = 0
 	_hide_menu()
 
@@ -1942,6 +1953,7 @@ func _begin_match() -> void:
 
 
 func _show_battle_loading_screen() -> void:
+	_play_bgm(BGM_STAGE_SELECT_KEY, -12.0)
 	_set_menu(
 		"加载战斗中",
 		"正在创建战斗场景、角色模型和对战界面，请稍等。",
@@ -1999,6 +2011,7 @@ func _pause_game() -> void:
 		return
 	previous_flow_state = flow_state
 	flow_state = FlowState.PAUSED
+	_set_bgm_volume(-25.0)
 	_show_pause_menu(false)
 
 
@@ -2006,6 +2019,7 @@ func _resume_game() -> void:
 	if flow_state != FlowState.PAUSED:
 		return
 	flow_state = previous_flow_state
+	_set_bgm_volume(-10.0)
 	_hide_menu()
 
 
@@ -2949,17 +2963,50 @@ func _sfx_stream(sound_key: String) -> AudioStream:
 
 
 func _play_battle_bgm() -> void:
-	if bgm_player == null:
-		return
-	if bgm_player.stream == null:
-		bgm_player.stream = _generated_battle_bgm()
-	if not bgm_player.playing:
-		bgm_player.play()
+	if current_battle_bgm_key.is_empty():
+		current_battle_bgm_key = String(BGM_BATTLE_KEYS[randi() % BGM_BATTLE_KEYS.size()])
+	_play_bgm(current_battle_bgm_key, -10.0)
 
 
 func _stop_battle_bgm() -> void:
-	if bgm_player != null:
+	current_battle_bgm_key = ""
+	if bgm_player != null and current_bgm_key in BGM_BATTLE_KEYS:
 		bgm_player.stop()
+		current_bgm_key = ""
+
+
+func _play_bgm(bgm_key: String, volume_db: float) -> void:
+	if bgm_player == null:
+		return
+	if current_bgm_key != bgm_key:
+		bgm_player.stop()
+		bgm_player.stream = _generated_bgm(bgm_key)
+		current_bgm_key = bgm_key
+	current_bgm_volume_db = volume_db
+	bgm_player.volume_db = volume_db
+	_start_bgm_if_possible(false)
+
+
+func _set_bgm_volume(volume_db: float) -> void:
+	if bgm_player != null:
+		current_bgm_volume_db = volume_db
+		bgm_player.volume_db = volume_db
+
+
+func _start_bgm_if_possible(force_restart: bool) -> void:
+	if bgm_player == null or bgm_player.stream == null:
+		return
+	if force_restart:
+		bgm_player.stop()
+	if force_restart or not bgm_player.playing:
+		bgm_player.play()
+
+
+func _unlock_audio_from_input() -> void:
+	if audio_unlocked_by_input:
+		return
+	audio_unlocked_by_input = true
+	_start_bgm_if_possible(true)
 
 
 func _generated_block_sound() -> AudioStreamWAV:
@@ -2988,35 +3035,37 @@ func _generated_block_sound() -> AudioStreamWAV:
 	return stream
 
 
-func _generated_battle_bgm() -> AudioStreamWAV:
-	if sound_stream_cache.has(GENERATED_BGM_KEY):
-		return sound_stream_cache[GENERATED_BGM_KEY] as AudioStreamWAV
+func _generated_bgm(bgm_key: String) -> AudioStreamWAV:
+	if sound_stream_cache.has(bgm_key):
+		return sound_stream_cache[bgm_key] as AudioStreamWAV
 	var rate := 22050
-	var bpm := 150.0
+	var bpm := _bgm_bpm(bgm_key)
 	var beats := 16
 	var seconds := 60.0 / bpm * float(beats)
 	var frames := int(rate * seconds)
 	var data := PackedByteArray()
 	data.resize(frames * 2)
-	var bass_notes := [55.0, 65.41, 73.42, 82.41, 55.0, 65.41, 98.0, 82.41]
-	var lead_notes := [220.0, 246.94, 261.63, 329.63, 293.66, 261.63, 246.94, 196.0]
+	var bass_notes := _bgm_bass_notes(bgm_key)
+	var lead_notes := _bgm_lead_notes(bgm_key)
 	var write_index := 0
 	for i in range(frames):
 		var t := float(i) / float(rate)
 		var beat := t * bpm / 60.0
 		var step := int(floor(beat * 2.0)) % bass_notes.size()
 		var step_pos := fposmod(beat * 2.0, 1.0)
-		var bass_env := exp(-step_pos * 3.8)
-		var bass := sin(TAU * bass_notes[step] * t) * bass_env * 0.22
-		var lead_step := int(floor(beat)) % lead_notes.size()
-		var lead_gate := 1.0 if fposmod(beat, 1.0) < 0.58 else 0.0
-		var lead := (sin(TAU * lead_notes[lead_step] * t) + 0.35 * sin(TAU * lead_notes[lead_step] * 2.0 * t)) * 0.085 * lead_gate
+		var bass_freq := float(bass_notes[step])
+		var lead_freq := float(lead_notes[int(floor(beat)) % lead_notes.size()])
+		var bass_env := exp(-step_pos * _bgm_bass_decay(bgm_key))
+		var bass := sin(TAU * bass_freq * t) * bass_env * _bgm_bass_gain(bgm_key)
+		var pad := (sin(TAU * bass_freq * 2.0 * t) + sin(TAU * bass_freq * 3.0 * t) * 0.45) * _bgm_pad_gain(bgm_key)
+		var lead_gate := 1.0 if fposmod(beat, 1.0) < _bgm_lead_gate(bgm_key) else 0.0
+		var lead := (sin(TAU * lead_freq * t) + 0.32 * sin(TAU * lead_freq * 2.0 * t)) * _bgm_lead_gain(bgm_key) * lead_gate
 		var kick_pos := fposmod(beat, 1.0)
-		var kick := sin(TAU * (95.0 - kick_pos * 52.0) * t) * exp(-kick_pos * 12.0) * 0.26
-		var hat_pos := fposmod(beat * 2.0, 1.0)
+		var kick := sin(TAU * (95.0 - kick_pos * 52.0) * t) * exp(-kick_pos * 12.0) * _bgm_kick_gain(bgm_key)
+		var hat_pos := fposmod(beat * _bgm_hat_rate(bgm_key), 1.0)
 		var noise := fposmod(sin(float(i) * 12.9898) * 43758.5453, 1.0) * 2.0 - 1.0
-		var hat := noise * exp(-hat_pos * 26.0) * 0.045
-		var value := clampf((bass + lead + kick + hat) * 0.76, -0.88, 0.88)
+		var hat := noise * exp(-hat_pos * 26.0) * _bgm_hat_gain(bgm_key)
+		var value := clampf((bass + pad + lead + kick + hat) * _bgm_master_gain(bgm_key), -0.88, 0.88)
 		var sample := int(round(value * 32767.0))
 		if sample < 0:
 			sample += 65536
@@ -3031,11 +3080,94 @@ func _generated_battle_bgm() -> AudioStreamWAV:
 	stream.loop_begin = 0
 	stream.loop_end = frames
 	stream.data = data
-	sound_stream_cache[GENERATED_BGM_KEY] = stream
+	sound_stream_cache[bgm_key] = stream
 	return stream
 
 
+func _bgm_bpm(bgm_key: String) -> float:
+	match bgm_key:
+		BGM_MAIN_MENU_KEY:
+			return 96.0
+		BGM_CHARACTER_SELECT_KEY:
+			return 126.0
+		BGM_STAGE_SELECT_KEY:
+			return 112.0
+		"bgm_battle_rush":
+			return 164.0
+		"bgm_battle_arcade":
+			return 142.0
+	return 152.0
+
+
+func _bgm_bass_notes(bgm_key: String) -> Array:
+	match bgm_key:
+		BGM_MAIN_MENU_KEY:
+			return [49.0, 61.74, 73.42, 61.74, 55.0, 65.41, 82.41, 65.41]
+		BGM_CHARACTER_SELECT_KEY:
+			return [65.41, 65.41, 73.42, 87.31, 65.41, 98.0, 87.31, 73.42]
+		BGM_STAGE_SELECT_KEY:
+			return [55.0, 69.3, 82.41, 69.3, 61.74, 73.42, 92.5, 73.42]
+		"bgm_battle_rush":
+			return [55.0, 65.41, 73.42, 98.0, 55.0, 73.42, 82.41, 110.0]
+		"bgm_battle_arcade":
+			return [61.74, 73.42, 92.5, 73.42, 55.0, 65.41, 82.41, 65.41]
+	return [55.0, 65.41, 73.42, 82.41, 55.0, 65.41, 98.0, 82.41]
+
+
+func _bgm_lead_notes(bgm_key: String) -> Array:
+	match bgm_key:
+		BGM_MAIN_MENU_KEY:
+			return [196.0, 246.94, 293.66, 246.94, 220.0, 261.63, 329.63, 261.63]
+		BGM_CHARACTER_SELECT_KEY:
+			return [261.63, 329.63, 392.0, 523.25, 440.0, 392.0, 329.63, 293.66]
+		BGM_STAGE_SELECT_KEY:
+			return [220.0, 277.18, 329.63, 415.3, 369.99, 329.63, 277.18, 246.94]
+		"bgm_battle_rush":
+			return [220.0, 261.63, 329.63, 392.0, 329.63, 293.66, 261.63, 196.0]
+		"bgm_battle_arcade":
+			return [246.94, 311.13, 369.99, 493.88, 415.3, 369.99, 311.13, 246.94]
+	return [220.0, 246.94, 261.63, 329.63, 293.66, 261.63, 246.94, 196.0]
+
+
+func _bgm_bass_decay(bgm_key: String) -> float:
+	return 2.2 if bgm_key in [BGM_MAIN_MENU_KEY, BGM_STAGE_SELECT_KEY] else 3.8
+
+
+func _bgm_bass_gain(bgm_key: String) -> float:
+	return 0.24 if bgm_key == BGM_MAIN_MENU_KEY else 0.22
+
+
+func _bgm_pad_gain(bgm_key: String) -> float:
+	return 0.09 if bgm_key == BGM_MAIN_MENU_KEY else (0.055 if bgm_key == BGM_STAGE_SELECT_KEY else 0.018)
+
+
+func _bgm_lead_gate(bgm_key: String) -> float:
+	return 0.76 if bgm_key in [BGM_MAIN_MENU_KEY, BGM_STAGE_SELECT_KEY] else 0.58
+
+
+func _bgm_lead_gain(bgm_key: String) -> float:
+	return 0.11 if bgm_key == BGM_MAIN_MENU_KEY else 0.09
+
+
+func _bgm_kick_gain(bgm_key: String) -> float:
+	return 0.18 if bgm_key == BGM_MAIN_MENU_KEY else 0.26
+
+
+func _bgm_hat_rate(bgm_key: String) -> float:
+	return 1.5 if bgm_key == BGM_MAIN_MENU_KEY else 2.0
+
+
+func _bgm_hat_gain(bgm_key: String) -> float:
+	return 0.035 if bgm_key == BGM_MAIN_MENU_KEY else 0.045
+
+
+func _bgm_master_gain(bgm_key: String) -> float:
+	return 0.86 if bgm_key == BGM_MAIN_MENU_KEY else 0.76
+
+
 func _input(event: InputEvent) -> void:
+	if (event is InputEventKey and event.pressed and not event.echo) or (event is InputEventMouseButton and event.pressed):
+		_unlock_audio_from_input()
 	if event is InputEventKey and event.pressed and not event.echo:
 		var key_event := event as InputEventKey
 		if key_event.keycode == KEY_F9:
