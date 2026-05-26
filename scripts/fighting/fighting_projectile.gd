@@ -142,7 +142,7 @@ func _resolve_target_contact() -> void:
 		target_fighter._gain_meter(move.meter_gain_on_block)
 		owner_fighter.combat_event.emit("%s 防住了 %s，削血 %d" % [target_fighter.character_name, move.display_name, chip])
 	else:
-		var dealt := target_fighter.receive_hit(move, owner_fighter)
+		var dealt := target_fighter.receive_unblocked_contact(move, owner_fighter)
 		if dealt > 0:
 			owner_fighter._gain_meter(move.meter_gain_on_hit)
 			owner_fighter.hit_confirmed.emit(move)

@@ -79,6 +79,10 @@ enum AttackLevel {
 @export var animation_key := ""
 @export var vfx_key := ""
 @export var sfx_key := ""
+@export var cinematic_enabled := false
+@export var cinematic_video_path := ""
+@export var cinematic_duration_frames := 180
+@export var cinematic_damage := -1
 
 
 func total_frames() -> int:

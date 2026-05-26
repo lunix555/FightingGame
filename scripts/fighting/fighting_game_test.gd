@@ -62,6 +62,41 @@ const METER_STOCK_VALUE := 100
 const METER_MAX_STOCKS := 3
 const METER_MAX_VALUE := METER_STOCK_VALUE * METER_MAX_STOCKS
 const DEFAULT_MOVE_RESOURCE_FOLDER := "res://data/moves/prototype"
+const DEFAULT_FIGHTER_STATS := {
+	"walk_speed": 2.6,
+	"dash_speed": 6.0,
+	"jump_speed": 5.2,
+	"gravity": 14.0,
+	"air_control_speed": 2.35,
+	"air_control_acceleration": 0.42,
+}
+const TUNABLE_FIGHTER_STATS := {
+	"walk_speed": true,
+	"dash_speed": true,
+	"jump_speed": true,
+	"gravity": true,
+	"air_control_speed": true,
+	"air_control_acceleration": true,
+}
+const DEFAULT_CHARACTER_VISUAL_PROFILE := {
+	"base": "res://assets/fbx_model/Character_Base.FBX",
+	"animations": {
+		"idle": "res://assets/fbx_anim/Idle_Anim1.FBX",
+		"punch": "res://assets/fbx_anim/Cross_Punch_Anim1.FBX",
+		"kick": "res://assets/fbx_anim/Mma_Kick_Anim1.FBX",
+		"jump": "res://assets/fbx_anim/Jump_Anim1.FBX",
+		"run": "res://assets/fbx_anim/Fast_Run_Anim.FBX",
+	},
+	"textures": {
+		"body": "res://assets/textures/1129/4.png",
+		"face": "res://assets/textures/1129/5.png",
+		"face_detail": "res://assets/textures/1129/5.png",
+		"eye": "res://assets/textures/1129/3.png",
+		"hair": "res://assets/textures/1129/1.png",
+		"mayu": "res://assets/textures/1129/5.png",
+		"tail": "res://assets/textures/1129/2.png",
+	},
+}
 const CHARACTER_MOVE_RESOURCE_FOLDERS := {
 	0: "res://data/moves/prototype",
 }
@@ -231,6 +266,7 @@ enum FlowState {
 	LOADING_BATTLE,
 	ROUND_INTRO,
 	FIGHTING,
+	CINEMATIC,
 	PAUSED,
 	ROUND_OVER,
 	MATCH_OVER,
@@ -533,6 +569,11 @@ var stage_cursor_index := 0
 var selected_stage_index := 0
 var selected_stage_name := "Neon Street"
 var match_load_in_progress := false
+var cinematic_layer: CanvasLayer
+var cinematic_root: Control
+var cinematic_video_player: VideoStreamPlayer
+var cinematic_frames_left := 0
+var pending_cinematic := {}
 var debug_face_right_degrees := 140.0
 var debug_face_left_degrees := 40.0
 var ai_attack_cooldown := 0
@@ -571,6 +612,9 @@ func _physics_process(_delta: float) -> void:
 		_update_projectiles()
 		_update_camera()
 		_check_round_end()
+	elif flow_state == FlowState.CINEMATIC:
+		_update_cinematic()
+		_update_camera()
 	elif flow_state == FlowState.ROUND_INTRO:
 		round_intro_frames -= 1
 		_update_round_intro_overlay()
@@ -600,6 +644,7 @@ func _setup_ui_layer() -> void:
 		return
 	hud_layer = CanvasLayer.new()
 	hud_layer.name = "HUD"
+	hud_layer.layer = 20
 	add_child(hud_layer)
 	build_debug_label = Label.new()
 	build_debug_label.name = "BuildDebugLabel"
@@ -653,6 +698,9 @@ func _unload_battle_scene() -> void:
 	p1 = null
 	p2 = null
 	camera = null
+	_hide_cinematic_overlay()
+	pending_cinematic.clear()
+	cinematic_frames_left = 0
 	p1_health_bar = null
 	p2_health_bar = null
 	p1_meter_bar = null
@@ -735,7 +783,7 @@ func _setup_fighters() -> void:
 	p1.stage_max_x = 4.6
 	p1.show_debug_proxy = false
 	p1.visual_target_height = BATTLE_VISUAL_TARGET_HEIGHT
-	p1.move_resource_folder = _move_resource_folder_for_character(p1_character_index)
+	_apply_character_resources_to_fighter(p1, p1_character_index)
 	p1.set_visual_facing_angles(debug_face_right_degrees, debug_face_left_degrees)
 	battle_root.add_child(p1)
 
@@ -748,7 +796,7 @@ func _setup_fighters() -> void:
 	p2.stage_max_x = 4.6
 	p2.show_debug_proxy = false
 	p2.visual_target_height = BATTLE_VISUAL_TARGET_HEIGHT
-	p2.move_resource_folder = _move_resource_folder_for_character(p2_character_index)
+	_apply_character_resources_to_fighter(p2, p2_character_index)
 	p2.set_visual_facing_angles(debug_face_right_degrees, debug_face_left_degrees)
 	battle_root.add_child(p2)
 
@@ -758,6 +806,8 @@ func _setup_fighters() -> void:
 	p2.move_started.connect(_on_move_started.bind("P2"))
 	p1.hit_confirmed.connect(_on_hit_confirmed.bind("P1"))
 	p2.hit_confirmed.connect(_on_hit_confirmed.bind("P2"))
+	p1.cinematic_requested.connect(_on_cinematic_requested)
+	p2.cinematic_requested.connect(_on_cinematic_requested)
 	p1.combat_event.connect(_on_combat_event)
 	p2.combat_event.connect(_on_combat_event)
 	p1.sound_requested.connect(_play_sfx)
@@ -1462,6 +1512,7 @@ func _make_character_model_preview(player: int) -> Control:
 	fighter.show_debug_proxy = false
 	fighter.use_fbx_visual = true
 	fighter.visual_target_height = 2.05
+	_apply_character_resources_to_fighter(fighter, p1_character_index if player == 1 else p2_character_index)
 	fighter.set_visual_facing_angles(debug_face_right_degrees, debug_face_left_degrees)
 	fighter.facing_right = player == 1
 	fighter.position = Vector3(0.0, -0.68, 0.0)
@@ -1539,7 +1590,7 @@ func _make_character_tile(index: int) -> PanelContainer:
 	margin.add_child(box)
 
 	var portrait := TextureRect.new()
-	portrait.texture = PORTRAIT_TEXTURE
+	portrait.texture = _portrait_texture_for_character(index)
 	portrait.modulate = CHARACTER_ROSTER[index]["color"]
 	portrait.custom_minimum_size = Vector2(64.0, 64.0)
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
@@ -1865,7 +1916,54 @@ func _apply_selected_characters() -> void:
 
 
 func _move_resource_folder_for_character(character_index: int) -> String:
-	return String(CHARACTER_MOVE_RESOURCE_FOLDERS.get(character_index, DEFAULT_MOVE_RESOURCE_FOLDER))
+	var data := _character_data(character_index)
+	return String(data.get("move_folder", CHARACTER_MOVE_RESOURCE_FOLDERS.get(character_index, DEFAULT_MOVE_RESOURCE_FOLDER)))
+
+
+func _character_data(character_index: int) -> Dictionary:
+	if character_index < 0 or character_index >= CHARACTER_ROSTER.size():
+		return CHARACTER_ROSTER[0] as Dictionary
+	return CHARACTER_ROSTER[character_index] as Dictionary
+
+
+func _character_visual_profile(character_index: int) -> Dictionary:
+	var data := _character_data(character_index)
+	if data.has("visual"):
+		return data["visual"] as Dictionary
+	return DEFAULT_CHARACTER_VISUAL_PROFILE
+
+
+func _apply_character_resources_to_fighter(fighter: FighterController, character_index: int) -> void:
+	if fighter == null:
+		return
+	var data := _character_data(character_index)
+	var visual := _character_visual_profile(character_index)
+	var move_folder := String(data.get("move_folder", _move_resource_folder_for_character(character_index)))
+	var base_scene := String(visual.get("base", DEFAULT_CHARACTER_VISUAL_PROFILE["base"]))
+	var animations := (visual.get("animations", DEFAULT_CHARACTER_VISUAL_PROFILE["animations"]) as Dictionary).duplicate(true)
+	var textures := (visual.get("textures", DEFAULT_CHARACTER_VISUAL_PROFILE["textures"]) as Dictionary).duplicate(true)
+	var move_overrides := (data.get("move_overrides", {}) as Dictionary).duplicate(true)
+	fighter.apply_character_resources(move_folder, base_scene, animations, textures, move_overrides)
+	_apply_fighter_stat_overrides(fighter, data.get("stats", {}) as Dictionary)
+	fighter.set_meta("character_index", character_index)
+
+
+func _apply_fighter_stat_overrides(fighter: FighterController, stats: Dictionary) -> void:
+	for property_name in DEFAULT_FIGHTER_STATS.keys():
+		fighter.set(String(property_name), DEFAULT_FIGHTER_STATS[property_name])
+	for property_name in stats.keys():
+		var property_text := String(property_name)
+		if TUNABLE_FIGHTER_STATS.has(property_text):
+			fighter.set(property_text, stats[property_name])
+
+
+func _portrait_texture_for_character(character_index: int) -> Texture2D:
+	var data := _character_data(character_index)
+	var portrait_path := String(data.get("portrait", ""))
+	if portrait_path.is_empty():
+		return PORTRAIT_TEXTURE
+	var texture := ResourceLoader.load(portrait_path) as Texture2D
+	return texture if texture != null else PORTRAIT_TEXTURE
 
 
 func _update_character_select_view() -> void:
@@ -1882,6 +1980,7 @@ func _update_character_preview(player: int) -> void:
 	var name_label: Label = p1_select_name_label if player == 1 else p2_select_name_label
 	var style_label: Label = p1_select_style_label if player == 1 else p2_select_style_label
 	var status_label: Label = p1_select_status_label if player == 1 else p2_select_status_label
+	var preview_fighter: FighterController = p1_select_preview_fighter if player == 1 else p2_select_preview_fighter
 
 	if name_label != null:
 		name_label.text = String(data["name"])
@@ -1890,6 +1989,9 @@ func _update_character_preview(player: int) -> void:
 	if status_label != null:
 		status_label.text = "已确认" if locked else "选择中"
 		status_label.modulate = Color(0.35, 1.0, 0.48) if locked else Color(1.0, 0.86, 0.25)
+	if preview_fighter != null and int(preview_fighter.get_meta("character_index", -1)) != index:
+		_apply_character_resources_to_fighter(preview_fighter, index)
+		preview_fighter.set_visual_facing_angles(debug_face_right_degrees, debug_face_left_degrees)
 
 
 func _apply_character_tile_style(tile: PanelContainer, index: int) -> void:
@@ -2053,6 +2155,9 @@ func _show_pause_moves_for_player(player: int) -> void:
 func _reset_fighters() -> void:
 	p1.reset_for_round(P1_SPAWN, max_health, true)
 	p2.reset_for_round(P2_SPAWN, max_health, true)
+	p1.refresh_facing_from_opponent()
+	p2.refresh_facing_from_opponent()
+	_clear_battle_input()
 
 
 func _reset_ai_control() -> void:
@@ -2498,6 +2603,139 @@ func _on_projectile_requested(move: MoveDefinition, owner: FighterController, sp
 	battle_root.add_child(projectile)
 	projectiles.append(projectile)
 	last_log = "%s 发出 %s" % [owner.character_name, move.display_name]
+
+
+func _on_cinematic_requested(move: MoveDefinition, attacker: FighterController, defender: FighterController) -> void:
+	if flow_state != FlowState.FIGHTING or move == null or attacker == null or defender == null:
+		return
+	if not pending_cinematic.is_empty():
+		return
+	pending_cinematic = {
+		"move": move,
+		"attacker": attacker,
+		"defender": defender,
+	}
+	cinematic_frames_left = maxi(1, move.cinematic_duration_frames)
+	flow_state = FlowState.CINEMATIC
+	_reset_ai_control()
+	_clear_battle_input()
+	_set_bgm_volume(-24.0)
+	_show_cinematic_overlay(move, attacker, defender)
+
+
+func _show_cinematic_overlay(move: MoveDefinition, attacker: FighterController, defender: FighterController) -> void:
+	_hide_cinematic_overlay()
+	cinematic_layer = CanvasLayer.new()
+	cinematic_layer.name = "CinematicLayer"
+	cinematic_layer.layer = hud_layer.layer - 1 if hud_layer != null else 19
+	add_child(cinematic_layer)
+	cinematic_root = Control.new()
+	cinematic_root.name = "CinematicOverlay"
+	cinematic_root.anchor_right = 1.0
+	cinematic_root.anchor_bottom = 1.0
+	cinematic_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cinematic_layer.add_child(cinematic_root)
+
+	var background := ColorRect.new()
+	background.color = Color(0.0, 0.0, 0.0, 0.92)
+	background.anchor_right = 1.0
+	background.anchor_bottom = 1.0
+	cinematic_root.add_child(background)
+
+	var loaded_video := false
+	if not move.cinematic_video_path.is_empty() and ResourceLoader.exists(move.cinematic_video_path):
+		var video_stream := ResourceLoader.load(move.cinematic_video_path) as VideoStream
+		if video_stream != null:
+			cinematic_video_player = VideoStreamPlayer.new()
+			cinematic_video_player.name = "CinematicVideo"
+			cinematic_video_player.stream = video_stream
+			cinematic_video_player.anchor_right = 1.0
+			cinematic_video_player.anchor_bottom = 1.0
+			cinematic_video_player.finished.connect(_finish_cinematic)
+			cinematic_root.add_child(cinematic_video_player)
+			cinematic_video_player.play()
+			loaded_video = true
+
+	if not loaded_video:
+		var center := CenterContainer.new()
+		center.anchor_right = 1.0
+		center.anchor_bottom = 1.0
+		cinematic_root.add_child(center)
+		var title := Label.new()
+		title.text = "%s\n%s" % [attacker.character_name, move.display_name]
+		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		title.add_theme_font_size_override("font_size", 46)
+		title.add_theme_color_override("font_color", Color(1.0, 0.88, 0.24))
+		center.add_child(title)
+		_apply_ui_font(title)
+
+	var info := Label.new()
+	info.text = "演出命中：%s -> %s" % [attacker.character_name, defender.character_name]
+	info.anchor_right = 1.0
+	info.anchor_top = 1.0
+	info.anchor_bottom = 1.0
+	info.offset_left = 32.0
+	info.offset_right = -32.0
+	info.offset_top = -58.0
+	info.offset_bottom = -24.0
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info.add_theme_font_size_override("font_size", 20)
+	info.add_theme_color_override("font_color", Color(0.92, 0.95, 1.0, 0.9))
+	cinematic_root.add_child(info)
+	_apply_ui_font(info)
+	last_log = "%s 命中 %s，进入演出" % [attacker.character_name, move.display_name]
+
+
+func _update_cinematic() -> void:
+	if pending_cinematic.is_empty():
+		_finish_cinematic()
+		return
+	cinematic_frames_left -= 1
+	if cinematic_frames_left <= 0:
+		_finish_cinematic()
+
+
+func _finish_cinematic() -> void:
+	if pending_cinematic.is_empty():
+		return
+	var move := pending_cinematic.get("move") as MoveDefinition
+	var attacker := pending_cinematic.get("attacker") as FighterController
+	var defender := pending_cinematic.get("defender") as FighterController
+	pending_cinematic.clear()
+	cinematic_frames_left = 0
+	_hide_cinematic_overlay()
+	_set_bgm_volume(-10.0)
+	flow_state = FlowState.FIGHTING
+	_clear_battle_input()
+	if move != null and attacker != null and defender != null and is_instance_valid(defender):
+		var dealt := defender.receive_cinematic_damage(move, attacker, move.cinematic_damage)
+		last_log = "%s 演出结算：%s 伤害 %d" % [attacker.character_name, move.display_name, dealt]
+	_update_hud()
+	_check_round_end()
+
+
+func _hide_cinematic_overlay() -> void:
+	if cinematic_video_player != null:
+		if cinematic_video_player.finished.is_connected(_finish_cinematic):
+			cinematic_video_player.finished.disconnect(_finish_cinematic)
+		cinematic_video_player.stop()
+		cinematic_video_player = null
+	if cinematic_root != null:
+		cinematic_root.queue_free()
+		cinematic_root = null
+	if cinematic_layer != null:
+		cinematic_layer.queue_free()
+		cinematic_layer = null
+
+
+func _clear_battle_input(clear_scripted: bool = true) -> void:
+	if p1 != null:
+		p1.input_buffer.clear()
+	if p2 != null:
+		p2.input_buffer.clear()
+		if clear_scripted:
+			p2.input_buffer.clear_scripted_state()
 
 
 func _update_projectiles() -> void:
@@ -3185,6 +3423,8 @@ func _input(event: InputEvent) -> void:
 		elif key_event.keycode == KEY_ENTER or key_event.keycode == KEY_KP_ENTER:
 			if flow_state == FlowState.FIGHTING:
 				_pause_game()
+				get_viewport().set_input_as_handled()
+			elif flow_state == FlowState.CINEMATIC:
 				get_viewport().set_input_as_handled()
 			elif flow_state == FlowState.PAUSED:
 				_resume_game()

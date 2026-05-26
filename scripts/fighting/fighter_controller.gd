@@ -4,6 +4,7 @@ class_name FighterController
 signal state_changed(new_state: String)
 signal move_started(move: MoveDefinition)
 signal hit_confirmed(move: MoveDefinition)
+signal cinematic_requested(move: MoveDefinition, attacker: FighterController, defender: FighterController)
 signal combat_event(message: String)
 signal projectile_requested(move: MoveDefinition, owner: FighterController, spawn_position: Vector3, direction: float)
 signal sound_requested(sound_key: String)
@@ -60,6 +61,10 @@ const SLASH_EFFECT_Y := 1.78
 @export var show_debug_proxy := false
 @export_dir var move_resource_folder := "res://data/moves/prototype"
 @export var moves: Array[MoveDefinition] = []
+@export_file("*.fbx", "*.FBX") var base_visual_scene := DEFAULT_BASE_VISUAL_SCENE
+@export var visual_scene_paths := DEFAULT_VISUAL_SCENES.duplicate()
+@export var visual_texture_paths := DEFAULT_TEXTURE_SET.duplicate()
+@export var move_overrides := {}
 @export var animation_slots := {
 	"idle": "",
 	"walk_forward": "",
@@ -129,8 +134,8 @@ const COMBO_MIN_SCALE := 0.35
 const BLOCK_SHIELD_FRAMES := 22
 const SHADOW_STEP_BEHIND_OFFSET := 0.68
 
-const BASE_VISUAL_SCENE := "res://assets/fbx_model/Character_Base.FBX"
-const VISUAL_SCENES := {
+const DEFAULT_BASE_VISUAL_SCENE := "res://assets/fbx_model/Character_Base.FBX"
+const DEFAULT_VISUAL_SCENES := {
 	"idle": "res://assets/fbx_anim/Idle_Anim1.FBX",
 	"punch": "res://assets/fbx_anim/Cross_Punch_Anim1.FBX",
 	"kick": "res://assets/fbx_anim/Mma_Kick_Anim1.FBX",
@@ -155,7 +160,7 @@ const MOVE_VISUALS := {
 	"anim_dash": "run",
 }
 
-const TEXTURE_SET := {
+const DEFAULT_TEXTURE_SET := {
 	"body": "res://assets/textures/1129/4.png",
 	"face": "res://assets/textures/1129/5.png",
 	"face_detail": "res://assets/textures/1129/5.png",
@@ -163,6 +168,37 @@ const TEXTURE_SET := {
 	"hair": "res://assets/textures/1129/1.png",
 	"mayu": "res://assets/textures/1129/5.png",
 	"tail": "res://assets/textures/1129/2.png",
+}
+const TUNABLE_MOVE_PROPERTIES := {
+	"startup_frames": true,
+	"active_frames": true,
+	"recovery_frames": true,
+	"hitstun_frames": true,
+	"blockstun_frames": true,
+	"damage": true,
+	"chip_damage": true,
+	"meter_cost": true,
+	"meter_gain_on_hit": true,
+	"meter_gain_on_block": true,
+	"hit_range": true,
+	"hit_height": true,
+	"pushback_on_hit": true,
+	"pushback_on_block": true,
+	"hitstop_on_hit": true,
+	"hitstop_on_block": true,
+	"knockdown_on_hit": true,
+	"knockdown_frames": true,
+	"projectile_speed": true,
+	"projectile_vertical_speed": true,
+	"projectile_gravity": true,
+	"projectile_lifetime_frames": true,
+	"projectile_radius": true,
+	"projectile_height": true,
+	"animation_key": true,
+	"cinematic_enabled": true,
+	"cinematic_video_path": true,
+	"cinematic_duration_frames": true,
+	"cinematic_damage": true,
 }
 
 
@@ -181,6 +217,41 @@ func _ready() -> void:
 
 func set_opponent(value: FighterController) -> void:
 	opponent = value
+
+
+func apply_character_resources(move_folder: String, base_scene: String, scene_paths: Dictionary, texture_paths: Dictionary, overrides: Dictionary = {}) -> void:
+	move_resource_folder = move_folder
+	base_visual_scene = base_scene
+	visual_scene_paths = scene_paths.duplicate(true)
+	visual_texture_paths = texture_paths.duplicate(true)
+	move_overrides = overrides.duplicate(true)
+	moves.clear()
+	visual_cache.clear()
+	visual_key = ""
+	if visual_model != null:
+		visual_model.queue_free()
+		visual_model = null
+		visual_animation_player = null
+	if is_inside_tree():
+		moves = FakeMoveDatabase.load_moves_from_folder(move_resource_folder)
+		if moves.is_empty():
+			moves = FakeMoveDatabase.build_default_moves()
+		_apply_move_overrides()
+		if use_fbx_visual:
+			call_deferred("_set_visual", "idle")
+
+
+func _apply_move_overrides() -> void:
+	if move_overrides.is_empty():
+		return
+	for move in moves:
+		if move == null or not move_overrides.has(move.id):
+			continue
+		var overrides := move_overrides[move.id] as Dictionary
+		for property_name in overrides.keys():
+			var property_text := String(property_name)
+			if TUNABLE_MOVE_PROPERTIES.has(property_text):
+				move.set(property_text, overrides[property_name])
 
 
 func reset_for_round(spawn_position: Vector3, round_health: int, reset_meter: bool = true) -> void:
@@ -590,6 +661,44 @@ func receive_hit(move: MoveDefinition, attacker: FighterController) -> int:
 	if move == null or is_invulnerable_to_hits():
 		return 0
 	var damage := _scaled_damage(move.damage)
+	return _apply_unblocked_hit_damage(move, attacker, damage)
+
+
+func receive_unblocked_contact(move: MoveDefinition, attacker: FighterController) -> int:
+	if attacker != null and attacker.should_trigger_cinematic(move):
+		var setup_result := receive_cinematic_setup(move, attacker)
+		if setup_result > 0:
+			attacker.cinematic_requested.emit(move, attacker, self)
+		return setup_result
+	return receive_hit(move, attacker)
+
+
+func receive_cinematic_setup(move: MoveDefinition, attacker: FighterController) -> int:
+	if move == null or is_invulnerable_to_hits():
+		return 0
+	_show_impact_flash(move, false)
+	sound_requested.emit(_hit_sound_key(move))
+	velocity = Vector3.ZERO
+	_interrupt_current_action()
+	_enter_state(FighterState.HITSTUN)
+	state_frame = -maxi(1, move.hitstun_frames)
+	return 1
+
+
+func receive_cinematic_damage(move: MoveDefinition, attacker: FighterController, override_damage: int = -1) -> int:
+	if move == null:
+		return 0
+	var damage := override_damage if override_damage >= 0 else _scaled_damage(move.damage)
+	return _apply_unblocked_hit_damage(move, attacker, damage)
+
+
+func should_trigger_cinematic(move: MoveDefinition) -> bool:
+	if move == null:
+		return false
+	return move.cinematic_enabled or move.move_type in [MoveDefinition.MoveType.SPECIAL, MoveDefinition.MoveType.SUPER]
+
+
+func _apply_unblocked_hit_damage(move: MoveDefinition, attacker: FighterController, damage: int) -> int:
 	health = max(0, health - damage)
 	_register_combo_damage(damage)
 	_show_impact_flash(move, false)
@@ -678,7 +787,7 @@ func _try_hit_opponent() -> void:
 			opponent._gain_meter(current_move.meter_gain_on_block)
 			combat_event.emit("%s 防住了 %s，削血 %d" % [opponent.character_name, current_move.display_name, chip])
 		else:
-			var dealt := opponent.receive_hit(current_move, self)
+			var dealt := opponent.receive_unblocked_contact(current_move, self)
 			if dealt > 0:
 				current_move.set_meta("hit_result", "hit")
 				_gain_meter(current_move.meter_gain_on_hit)
@@ -1178,6 +1287,8 @@ func _set_visual_for_move(move: MoveDefinition) -> void:
 		return
 
 	var key := String(MOVE_VISUALS.get(move.animation_key, "punch"))
+	if should_trigger_cinematic(move):
+		key = "punch"
 	_set_visual(key)
 	_play_visual_animation_fit_frames(move.total_frames())
 
@@ -1202,7 +1313,7 @@ func _ensure_base_visual() -> bool:
 	if visual_model != null and visual_animation_player != null:
 		return true
 
-	var packed_scene := ResourceLoader.load(BASE_VISUAL_SCENE) as PackedScene
+	var packed_scene := ResourceLoader.load(base_visual_scene) as PackedScene
 	if packed_scene == null:
 		return false
 	visual_model = packed_scene.instantiate() as Node3D
@@ -1225,7 +1336,8 @@ func _ensure_visual_animation(key: String) -> String:
 	if visual_cache.has(key):
 		return String(visual_cache[key])
 
-	var scene_path := String(VISUAL_SCENES.get(key, VISUAL_SCENES["idle"]))
+	var fallback_scene := String(visual_scene_paths.get("idle", DEFAULT_VISUAL_SCENES["idle"]))
+	var scene_path := String(visual_scene_paths.get(key, fallback_scene))
 	var packed_scene := ResourceLoader.load(scene_path) as PackedScene
 	if packed_scene == null:
 		return String(visual_cache.get("base", ""))
@@ -1410,19 +1522,19 @@ func _apply_visual_materials(root: Node) -> void:
 func _texture_for_material(material_name: String) -> String:
 	var lower_name := material_name.to_lower()
 	if lower_name.contains("bdy"):
-		return String(TEXTURE_SET["body"])
+		return String(visual_texture_paths.get("body", DEFAULT_TEXTURE_SET["body"]))
 	if lower_name.contains("eye"):
-		return String(TEXTURE_SET["eye"])
+		return String(visual_texture_paths.get("eye", DEFAULT_TEXTURE_SET["eye"]))
 	if lower_name.contains("hair"):
-		return String(TEXTURE_SET["hair"])
+		return String(visual_texture_paths.get("hair", DEFAULT_TEXTURE_SET["hair"]))
 	if lower_name.contains("tail"):
-		return String(TEXTURE_SET["tail"])
+		return String(visual_texture_paths.get("tail", DEFAULT_TEXTURE_SET["tail"]))
 	if lower_name.contains("face_001"):
-		return String(TEXTURE_SET["face_detail"])
+		return String(visual_texture_paths.get("face_detail", DEFAULT_TEXTURE_SET["face_detail"]))
 	if lower_name.contains("mayu"):
-		return String(TEXTURE_SET["mayu"])
+		return String(visual_texture_paths.get("mayu", DEFAULT_TEXTURE_SET["mayu"]))
 	if lower_name.contains("face"):
-		return String(TEXTURE_SET["face"])
+		return String(visual_texture_paths.get("face", DEFAULT_TEXTURE_SET["face"]))
 	return ""
 
 
