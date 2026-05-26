@@ -10,7 +10,41 @@ const UI_TEX_HEALTH := "res://assets/ui/kenney/bar_red.png"
 const UI_TEX_METER := "res://assets/ui/kenney/bar_yellow.png"
 const UI_TEX_STAR := "res://assets/ui/kenney/star_yellow.png"
 const SOUND_PATHS := {
-	"hit_light": "res://assets/audio/kenney_impact/hit_light.ogg",
+	"H-01a": [
+		"res://assets/audio/SFX_H/H-01a_hit_light_chain_01.wav",
+		"res://assets/audio/SFX_H/H-01a_hit_light_chain_02.wav",
+		"res://assets/audio/SFX_H/H-01a_hit_light_chain_03.wav",
+	],
+	"H-01b": [
+		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_01.wav",
+		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_02.wav",
+		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_03.wav",
+	],
+	"H-01c": [
+		"res://assets/audio/SFX_H/H-01c_hit_light_book_01.wav",
+		"res://assets/audio/SFX_H/H-01c_hit_light_book_02.wav",
+		"res://assets/audio/SFX_H/H-01c_hit_light_book_03.wav",
+	],
+	"hit_light": [
+		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_01.wav",
+		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_02.wav",
+		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_03.wav",
+	],
+	"hit_light_chain": [
+		"res://assets/audio/SFX_H/H-01a_hit_light_chain_01.wav",
+		"res://assets/audio/SFX_H/H-01a_hit_light_chain_02.wav",
+		"res://assets/audio/SFX_H/H-01a_hit_light_chain_03.wav",
+	],
+	"hit_light_coffin": [
+		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_01.wav",
+		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_02.wav",
+		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_03.wav",
+	],
+	"hit_light_book": [
+		"res://assets/audio/SFX_H/H-01c_hit_light_book_01.wav",
+		"res://assets/audio/SFX_H/H-01c_hit_light_book_02.wav",
+		"res://assets/audio/SFX_H/H-01c_hit_light_book_03.wav",
+	],
 	"hit_medium": "res://assets/audio/kenney_impact/hit_medium.ogg",
 	"hit_heavy": "res://assets/audio/kenney_impact/hit_heavy.ogg",
 	"block": "res://assets/audio/kenney_impact/block.ogg",
@@ -27,9 +61,51 @@ const SOUND_PATHS := {
 	"special_1": "res://assets/audio/kenney_combat/projectile_light.ogg",
 	"special_2": "res://assets/audio/kenney_combat/projectile_heavy.ogg",
 	"super": "res://assets/audio/kenney_combat/projectile_heavy.ogg",
-	"ui_click": "res://assets/audio/kenney_ui/click.ogg",
-	"ui_hover": "res://assets/audio/kenney_ui/hover.ogg",
-	"ui_switch": "res://assets/audio/kenney_ui/switch.ogg",
+	"U-01": [
+		"res://assets/audio/SFX_U/U-01_ui_select_01.wav",
+		"res://assets/audio/SFX_U/U-01_ui_select_02.wav",
+		"res://assets/audio/SFX_U/U-01_ui_select_03.wav",
+	],
+	"U-02": [
+		"res://assets/audio/SFX_U/U-02_ui_confirm_01.wav",
+		"res://assets/audio/SFX_U/U-02_ui_confirm_02.wav",
+	],
+	"U-04": "res://assets/audio/SFX_U/U-04_ui_round_fight.wav",
+	"U-05": "res://assets/audio/SFX_U/U-05_ui_ko_finish.wav",
+	"U-07": "res://assets/audio/SFX_U/U-07_ui_fail.wav",
+	"ui_select": [
+		"res://assets/audio/SFX_U/U-01_ui_select_01.wav",
+		"res://assets/audio/SFX_U/U-01_ui_select_02.wav",
+		"res://assets/audio/SFX_U/U-01_ui_select_03.wav",
+	],
+	"ui_confirm": [
+		"res://assets/audio/SFX_U/U-02_ui_confirm_01.wav",
+		"res://assets/audio/SFX_U/U-02_ui_confirm_02.wav",
+	],
+	"ui_click": [
+		"res://assets/audio/SFX_U/U-02_ui_confirm_01.wav",
+		"res://assets/audio/SFX_U/U-02_ui_confirm_02.wav",
+	],
+	"ui_hover": [
+		"res://assets/audio/SFX_U/U-01_ui_select_01.wav",
+		"res://assets/audio/SFX_U/U-01_ui_select_02.wav",
+		"res://assets/audio/SFX_U/U-01_ui_select_03.wav",
+	],
+	"ui_switch": [
+		"res://assets/audio/SFX_U/U-01_ui_select_01.wav",
+		"res://assets/audio/SFX_U/U-01_ui_select_02.wav",
+		"res://assets/audio/SFX_U/U-01_ui_select_03.wav",
+	],
+	"ui_round_fight": "res://assets/audio/SFX_U/U-04_ui_round_fight.wav",
+	"ui_ko_finish": "res://assets/audio/SFX_U/U-05_ui_ko_finish.wav",
+	"ui_fail": "res://assets/audio/SFX_U/U-07_ui_fail.wav",
+}
+const SFX_BASE_VOLUME_DB := -7.0
+const SFX_VOLUME_OFFSETS_DB := {
+	"U-05": 6.0,
+	"U-07": 6.0,
+	"ui_ko_finish": 6.0,
+	"ui_fail": 6.0,
 }
 const UI_FONT_PATH := "res://assets/fonts/simhei.ttf"
 const GENERATED_BLOCK_SOUND_KEY := "block_success"
@@ -37,7 +113,11 @@ const GENERATED_BGM_KEY := "battle_bgm"
 const BGM_MAIN_MENU_KEY := "bgm_menu_neon"
 const BGM_CHARACTER_SELECT_KEY := "bgm_character_select_fire"
 const BGM_STAGE_SELECT_KEY := "bgm_stage_select_grid"
+const BGM_NEON_STREET_KEY := "bgm_neon_street"
 const BGM_BATTLE_KEYS := ["bgm_battle_drive", "bgm_battle_rush", "bgm_battle_arcade"]
+const BGM_PATHS := {
+	BGM_NEON_STREET_KEY: "res://assets/audio/BGM/BGM_Neon Street.wav",
+}
 const FIGHTER_GROUND_Y := -0.42
 const P1_SPAWN := Vector3(-1.35, FIGHTER_GROUND_Y, 0.0)
 const P2_SPAWN := Vector3(1.35, FIGHTER_GROUND_Y, 0.0)
@@ -113,6 +193,8 @@ const STAGE_DEFINITIONS := [
 		"subtitle": "Cyberpunk city crosswalk",
 		"preview": "res://assets/backgrounds/cyberpunk_street/preview.png",
 		"root": "res://assets/backgrounds/cyberpunk_street/",
+		"bgm_key": BGM_NEON_STREET_KEY,
+		"bgm_volume_db": -4.0,
 		"layers": [
 			{"texture": "far-buildings.png", "size": Vector2(12.8, 5.75), "position": Vector3(0.0, 2.03, -2.55), "parallax": 0.05, "alpha": 1.0},
 			{"texture": "back-buildings.png", "size": Vector2(12.8, 5.75), "position": Vector3(0.0, 2.03, -2.35), "parallax": 0.16, "alpha": 1.0},
@@ -663,7 +745,7 @@ func _setup_audio() -> void:
 		var player := AudioStreamPlayer.new()
 		player.name = "SfxPlayer%d" % index
 		player.bus = "Master"
-		player.volume_db = -7.0
+		player.volume_db = SFX_BASE_VOLUME_DB
 		add_child(player)
 		sfx_players.append(player)
 	bgm_player = AudioStreamPlayer.new()
@@ -2036,6 +2118,7 @@ func _apply_character_tile_style(tile: PanelContainer, index: int) -> void:
 func _begin_match() -> void:
 	if match_load_in_progress:
 		return
+	_unlock_audio_from_input()
 	match_load_in_progress = true
 	flow_state = FlowState.LOADING_BATTLE
 	_show_battle_loading_screen()
@@ -2104,6 +2187,7 @@ func _start_round() -> void:
 func _start_fighting() -> void:
 	flow_state = FlowState.FIGHTING
 	round_frame = 0
+	_play_sfx("ui_round_fight")
 	last_log = "开战"
 	_hide_center_overlay()
 
@@ -2545,6 +2629,7 @@ func _finish_round(winner: int, message: String, is_ko: bool) -> void:
 		round_pause_frames += KO_SLOWMO_FRAMES
 		ko_slowmo_frames = KO_SLOWMO_FRAMES
 		ko_slowmo_tick_counter = 0
+		_play_sfx("ui_ko_finish" if winner == 1 else "ui_fail")
 	else:
 		ko_slowmo_frames = 0
 		ko_slowmo_tick_counter = 0
@@ -3183,46 +3268,85 @@ func _play_sfx(sound_key: String) -> void:
 	sfx_player_index = (sfx_player_index + 1) % sfx_players.size()
 	player.stop()
 	player.stream = stream
+	player.volume_db = SFX_BASE_VOLUME_DB + float(SFX_VOLUME_OFFSETS_DB.get(sound_key, 0.0))
 	player.pitch_scale = randf_range(0.96, 1.04)
 	player.play()
 
 
 func _sfx_stream(sound_key: String) -> AudioStream:
-	if sound_stream_cache.has(sound_key):
-		return sound_stream_cache[sound_key] as AudioStream
+	var cache_key := sound_key
+	if SOUND_PATHS.has(sound_key):
+		var sound_path_data = SOUND_PATHS[sound_key]
+		if sound_path_data is Array:
+			var paths := sound_path_data as Array
+			if paths.is_empty():
+				return null
+			cache_key = String(paths[randi() % paths.size()])
+		else:
+			cache_key = String(sound_path_data)
+	if sound_stream_cache.has(cache_key):
+		return sound_stream_cache[cache_key] as AudioStream
 	var stream: AudioStream = null
 	if sound_key == GENERATED_BLOCK_SOUND_KEY:
 		stream = _generated_block_sound()
 	elif SOUND_PATHS.has(sound_key):
-		var path := String(SOUND_PATHS[sound_key])
-		stream = ResourceLoader.load(path) as AudioStream
-	sound_stream_cache[sound_key] = stream
+		stream = ResourceLoader.load(cache_key) as AudioStream
+	sound_stream_cache[cache_key] = stream
 	return stream
 
 
 func _play_battle_bgm() -> void:
+	var volume_db := -10.0
 	if current_battle_bgm_key.is_empty():
-		current_battle_bgm_key = String(BGM_BATTLE_KEYS[randi() % BGM_BATTLE_KEYS.size()])
+		var stage := _get_selected_stage()
+		current_battle_bgm_key = String(stage.get("bgm_key", ""))
+		if current_battle_bgm_key.is_empty():
+			current_battle_bgm_key = String(BGM_BATTLE_KEYS[randi() % BGM_BATTLE_KEYS.size()])
+		else:
+			volume_db = float(stage.get("bgm_volume_db", volume_db))
+	if _play_bgm(current_battle_bgm_key, volume_db):
+		return
+	push_warning("Battle BGM failed, falling back to generated BGM: %s" % current_battle_bgm_key)
+	current_battle_bgm_key = String(BGM_BATTLE_KEYS[randi() % BGM_BATTLE_KEYS.size()])
 	_play_bgm(current_battle_bgm_key, -10.0)
 
 
 func _stop_battle_bgm() -> void:
+	var battle_bgm_key := current_battle_bgm_key
 	current_battle_bgm_key = ""
-	if bgm_player != null and current_bgm_key in BGM_BATTLE_KEYS:
+	if bgm_player != null and (current_bgm_key == battle_bgm_key or current_bgm_key in BGM_BATTLE_KEYS):
 		bgm_player.stop()
 		current_bgm_key = ""
 
 
-func _play_bgm(bgm_key: String, volume_db: float) -> void:
+func _play_bgm(bgm_key: String, volume_db: float) -> bool:
 	if bgm_player == null:
-		return
+		return false
 	if current_bgm_key != bgm_key:
 		bgm_player.stop()
-		bgm_player.stream = _generated_bgm(bgm_key)
+		if BGM_PATHS.has(bgm_key):
+			bgm_player.stream = _load_looping_bgm_stream(String(BGM_PATHS[bgm_key]))
+		else:
+			bgm_player.stream = _generated_bgm(bgm_key)
+		if bgm_player.stream == null:
+			push_warning("Missing BGM stream: %s" % bgm_key)
+			current_bgm_key = ""
+			return false
 		current_bgm_key = bgm_key
 	current_bgm_volume_db = volume_db
 	bgm_player.volume_db = volume_db
 	_start_bgm_if_possible(false)
+	return true
+
+
+func _load_looping_bgm_stream(path: String) -> AudioStream:
+	var stream := ResourceLoader.load(path) as AudioStream
+	if stream is AudioStreamWAV:
+		var wav_stream := stream as AudioStreamWAV
+		wav_stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		wav_stream.loop_begin = 0
+		wav_stream.loop_end = -1
+	return stream
 
 
 func _set_bgm_volume(volume_db: float) -> void:
@@ -3632,6 +3756,7 @@ func _apply_kenney_button_style(button: Button) -> void:
 		button.mouse_entered.connect(_on_button_hover_fx.bind(button, true))
 		button.mouse_exited.connect(_on_button_hover_fx.bind(button, false))
 		button.button_down.connect(_on_button_pressed_fx.bind(button))
+		button.pressed.connect(_unlock_audio_from_input)
 		button.pressed.connect(_play_sfx.bind("ui_click"))
 		button.set_meta("ui_sfx_connected", true)
 
