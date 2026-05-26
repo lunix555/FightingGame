@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="MoveDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fighting/move_definition.gd" id="1_move"]
+
+[resource]
+script = ExtResource("1_move")
+id = "214I"
+display_name = "冰柱"
+move_type = 2
+attack_level = 1
+motion = "214"
+button = "I"
+startup_frames = 12
+active_frames = 5
+recovery_frames = 30
+hitstun_frames = 23
+blockstun_frames = 12
+damage = 165
+hit_range = 0.85
+hit_height = 1.25
+chip_damage = 20
+knockdown_on_hit = true
+knockdown_frames = 55
+cancel_on_block = true
+projectile_enabled = true
+projectile_speed = 0.0
+projectile_lifetime_frames = 42
+projectile_radius = 0.38
+projectile_height = 0.78
+projectile_cancelable = false
+effect_style = "pillar"
+effect_spawn_mode = "target_ground"
+effect_texture_path = "res://assets/vfx/kenney_particle_full/trace_04.png"
+effect_color = Color(0.45, 0.88, 1, 0.78)
+effect_impact_color = Color(0.35, 0.82, 1, 0.95)
+effect_scale = Vector2(1.6, 1.55)
+animation_key = "anim_fireball"
+vfx_key = "ice_pillar"
+sfx_key = "special_2"

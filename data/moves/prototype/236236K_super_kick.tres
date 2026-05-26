@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="MoveDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fighting/move_definition.gd" id="1_move"]
+
+[resource]
+script = ExtResource("1_move")
+id = "6246K"
+display_name = "Super Kick"
+move_type = 3
+attack_level = 0
+motion = "6246"
+button = "K"
+startup_frames = 14
+active_frames = 12
+recovery_frames = 36
+hitstun_frames = 28
+blockstun_frames = 15
+damage = 390
+hit_range = 4.2
+hit_height = 1.35
+meter_cost = 200
+chip_damage = 42
+meter_gain_on_hit = 0
+meter_gain_on_block = 0
+knockdown_on_hit = true
+knockdown_frames = 70
+cancel_on_block = true
+animation_key = "anim_overdrive"
+vfx_key = "super_flash"
+sfx_key = "super"

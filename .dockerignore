@@ -1,0 +1,10 @@
+*
+
+!Dockerfile
+!docker/
+!docker/nginx.conf
+!docker/static_server.go
+!exports/
+!exports/web/
+!exports/web/**
+exports/web/**/*.import

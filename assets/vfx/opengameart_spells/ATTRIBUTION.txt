@@ -1,0 +1,6 @@
+﻿OpenGameArt VFX test assets
+
+pixelart_spells_1.zip from https://opengameart.org/content/pixel-art-spells
+Fireball_Effect_2.zip from https://opengameart.org/content/fireball-effect-2
+
+Both pages indicate CC0 license. Keep original page URLs for attribution notes even though CC0 does not require attribution.

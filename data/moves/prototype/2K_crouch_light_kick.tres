@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="MoveDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fighting/move_definition.gd" id="1_move"]
+
+[resource]
+script = ExtResource("1_move")
+id = "2K"
+display_name = "Crouch Light Kick"
+move_type = 0
+attack_level = 1
+motion = "2"
+button = "K"
+startup_frames = 6
+active_frames = 4
+recovery_frames = 15
+hitstun_frames = 16
+blockstun_frames = 9
+damage = 85
+animation_key = "anim_crouch_kick"
+vfx_key = "hit_spark_s"
+sfx_key = "hit_light"

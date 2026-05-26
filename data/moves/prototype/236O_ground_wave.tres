@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="MoveDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fighting/move_definition.gd" id="1_move"]
+
+[resource]
+script = ExtResource("1_move")
+id = "236O"
+display_name = "地波"
+move_type = 2
+attack_level = 0
+motion = "236"
+button = "O"
+startup_frames = 14
+active_frames = 3
+recovery_frames = 30
+hitstun_frames = 20
+blockstun_frames = 12
+damage = 130
+hit_range = 0.8
+hit_height = 0.45
+chip_damage = 16
+cancel_on_block = true
+ground_only = true
+projectile_enabled = true
+projectile_speed = 4.25
+projectile_lifetime_frames = 145
+projectile_radius = 0.26
+projectile_height = 0.16
+projectile_ground_hug = true
+effect_style = "ground_wave"
+effect_texture_path = "res://assets/vfx/kenney_particle_full/trace_04.png"
+effect_color = Color(1, 0.82, 0.18, 0.72)
+effect_impact_color = Color(1, 0.76, 0.12, 0.84)
+effect_offset_x = 0.62
+effect_scale = Vector2(1.45, 0.85)
+animation_key = "anim_fireball"
+vfx_key = "muzzle_flash"
+sfx_key = "special_1"

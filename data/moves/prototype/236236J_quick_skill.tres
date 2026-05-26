@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="MoveDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fighting/move_definition.gd" id="1_move"]
+
+[resource]
+script = ExtResource("1_move")
+id = "236236J"
+display_name = "普通必杀"
+move_type = 2
+motion = "236236"
+button = "J"
+startup_frames = 8
+active_frames = 8
+recovery_frames = 22
+hitstun_frames = 20
+blockstun_frames = 11
+damage = 165
+hit_range = 3.0
+hit_height = 1.0
+meter_cost = 100
+chip_damage = 18
+cancel_on_block = true
+animation_key = "anim_fireball"
+vfx_key = "muzzle_flash"
+sfx_key = "special_1"

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="MoveDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fighting/move_definition.gd" id="1_move"]
+
+[resource]
+script = ExtResource("1_move")
+id = "6U"
+display_name = "Forward Heavy"
+move_type = 1
+motion = "6"
+button = "U"
+startup_frames = 5
+active_frames = 8
+recovery_frames = 32
+hitstun_frames = 20
+blockstun_frames = 11
+damage = 180
+knockdown_on_hit = true
+knockdown_frames = 45
+animation_key = "anim_forward_heavy"
+vfx_key = "hit_spark_l"
+sfx_key = "hit_heavy"

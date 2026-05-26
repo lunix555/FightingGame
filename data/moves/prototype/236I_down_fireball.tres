@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="MoveDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fighting/move_definition.gd" id="1_move"]
+
+[resource]
+script = ExtResource("1_move")
+id = "236I"
+display_name = "斜下波动拳"
+move_type = 2
+attack_level = 1
+motion = "236"
+button = "I"
+startup_frames = 11
+active_frames = 3
+recovery_frames = 28
+hitstun_frames = 20
+blockstun_frames = 11
+damage = 120
+hit_range = 0.8
+hit_height = 1.0
+chip_damage = 14
+cancel_on_block = true
+projectile_enabled = true
+projectile_speed = 3.75
+projectile_vertical_speed = -2.35
+projectile_lifetime_frames = 125
+projectile_radius = 0.24
+projectile_height = 1.86
+effect_style = "fireball"
+effect_texture_path = "res://assets/vfx/kenney_particle_full/flame_05.png"
+effect_color = Color(1, 0.58, 0.15, 0.76)
+effect_impact_color = Color(1, 0.48, 0.08, 0.86)
+effect_offset_x = 0.8
+effect_scale = Vector2(1.55, 0.95)
+animation_key = "anim_fireball"
+vfx_key = "muzzle_flash"
+sfx_key = "special_1"

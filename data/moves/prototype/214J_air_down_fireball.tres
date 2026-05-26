@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="MoveDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fighting/move_definition.gd" id="1_move"]
+
+[resource]
+script = ExtResource("1_move")
+id = "214J"
+display_name = "空中下波动拳"
+move_type = 2
+attack_level = 0
+motion = "214"
+button = "J"
+startup_frames = 8
+active_frames = 3
+recovery_frames = 24
+hitstun_frames = 19
+blockstun_frames = 10
+damage = 115
+hit_range = 0.8
+hit_height = 1.0
+chip_damage = 14
+cancel_on_block = true
+air_only = true
+projectile_enabled = true
+projectile_speed = 3.0
+projectile_vertical_speed = -3.45
+projectile_gravity = 3.0
+projectile_lifetime_frames = 115
+projectile_radius = 0.23
+projectile_height = 1.38
+effect_style = "air_drop"
+effect_texture_path = "res://assets/vfx/kenney_particle_full/twirl_02.png"
+effect_color = Color(0.95, 0.28, 0.95, 0.72)
+effect_impact_color = Color(0.95, 0.25, 1, 0.84)
+effect_offset_x = 0.72
+effect_scale = Vector2(1.1, 1.1)
+animation_key = "anim_fireball"
+vfx_key = "muzzle_flash"
+sfx_key = "special_1"

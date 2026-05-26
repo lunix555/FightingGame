@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="MoveDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fighting/move_definition.gd" id="1_move"]
+
+[resource]
+script = ExtResource("1_move")
+id = "5J"
+display_name = "Light Punch"
+move_type = 0
+motion = ""
+button = "J"
+startup_frames = 2
+active_frames = 3
+recovery_frames = 13
+hitstun_frames = 15
+blockstun_frames = 8
+damage = 80
+animation_key = "anim_light_punch"
+vfx_key = "hit_spark_s"
+sfx_key = "hit_light"

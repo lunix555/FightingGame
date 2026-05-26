@@ -1,0 +1,42 @@
+[gd_resource type="Resource" script_class="MoveDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fighting/move_definition.gd" id="1_move"]
+
+[resource]
+script = ExtResource("1_move")
+id = "236J"
+display_name = "轻波动拳"
+move_type = 2
+motion = "236"
+button = "J"
+startup_frames = 8
+active_frames = 3
+recovery_frames = 24
+hitstun_frames = 18
+blockstun_frames = 10
+damage = 95
+hit_range = 0.8
+hit_height = 1.0
+chip_damage = 10
+cancel_on_block = true
+projectile_enabled = true
+projectile_speed = 5.1
+projectile_lifetime_frames = 130
+projectile_radius = 0.22
+projectile_height = 1.82
+effect_style = "fireball"
+charge_enabled = true
+charge_min_frames = 8
+charge_full_frames = 66
+charge_max_hold_frames = 130
+charge_damage_bonus = 90
+charge_radius_bonus = 0.16
+charge_speed_bonus = 0.45
+effect_texture_path = "res://assets/vfx/kenney_particle_full/flame_05.png"
+effect_color = Color(1, 0.42, 0.12, 0.74)
+effect_impact_color = Color(1, 0.36, 0.08, 0.84)
+effect_offset_x = 0.82
+effect_scale = Vector2(1.25, 1.25)
+animation_key = "anim_fireball"
+vfx_key = "muzzle_flash"
+sfx_key = "special_1"

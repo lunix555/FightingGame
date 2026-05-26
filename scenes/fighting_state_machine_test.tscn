@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://fighting_state_machine_test"]
+
+[ext_resource type="Script" path="res://scripts/fighting/fighting_game_test.gd" id="1_game_test"]
+
+[node name="FightingStateMachineTest" type="Node3D"]
+script = ExtResource("1_game_test")

@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="MoveDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fighting/move_definition.gd" id="1_move"]
+
+[resource]
+script = ExtResource("1_move")
+id = "214K"
+display_name = "近身火光"
+move_type = 2
+motion = "214"
+button = "K"
+startup_frames = 7
+active_frames = 5
+recovery_frames = 24
+hitstun_frames = 19
+blockstun_frames = 10
+damage = 145
+hit_range = 1.22
+hit_height = 1.22
+chip_damage = 18
+cancel_on_block = true
+effect_style = "slash"
+effect_texture_path = "res://assets/vfx/kenney_particle_full/slash_03.png"
+effect_color = Color(1, 0.45, 0.08, 0.72)
+effect_impact_color = Color(1, 0.24, 0.04, 0.9)
+effect_scale = Vector2(1.35, 1.0)
+animation_key = "anim_back_fist"
+vfx_key = "flame_slash"
+sfx_key = "special_1"

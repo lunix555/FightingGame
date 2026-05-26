@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="MoveDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fighting/move_definition.gd" id="1_move"]
+
+[resource]
+script = ExtResource("1_move")
+id = "214L"
+display_name = "Shadow Step"
+move_type = 2
+motion = "214"
+button = "L"
+startup_frames = 5
+active_frames = 0
+recovery_frames = 16
+hitstun_frames = 0
+blockstun_frames = 0
+damage = 0
+hit_range = 0.0
+hit_height = 0.0
+meter_cost = 0
+chip_damage = 0
+meter_gain_on_hit = 0
+meter_gain_on_block = 0
+cancel_on_hit = false
+cancel_on_block = false
+ground_only = true
+animation_key = "anim_dash"
+vfx_key = "shadow_step"
+sfx_key = "ui_switch"

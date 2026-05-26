@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="MoveDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/fighting/move_definition.gd" id="1_move"]
+
+[resource]
+script = ExtResource("1_move")
+id = "2I"
+display_name = "Crouch Heavy Kick"
+move_type = 0
+attack_level = 1
+motion = "2"
+button = "I"
+startup_frames = 9
+active_frames = 5
+recovery_frames = 25
+hitstun_frames = 18
+blockstun_frames = 10
+damage = 160
+hit_range = 1.25
+hit_height = 0.75
+knockdown_on_hit = true
+knockdown_frames = 45
+animation_key = "anim_crouch_kick"
+vfx_key = "hit_spark_m"
+sfx_key = "hit_heavy"
