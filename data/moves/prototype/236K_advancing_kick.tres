@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_move")
 id = "236K"
-display_name = "Hurricane Kick"
+display_name = "旋风腿"
 move_type = 2
 motion = "236"
 button = "K"
@@ -17,7 +17,7 @@ blockstun_frames = 10
 damage = 180
 pushback_on_hit = 1.15
 self_velocity_x = 2.35
-meter_cost = 100
+meter_cost = 0
 chip_damage = 20
 knockdown_on_hit = true
 knockdown_frames = 45

@@ -470,7 +470,7 @@ const MOVE_LIST_ROWS := [
 	{"directions": [2, 1, 4], "button": "J", "name": "空中下波动拳，跳起后可用"},
 	{"directions": [2, 3, 6], "button": "O", "name": "地波，贴地前进，下段"},
 	{"directions": [2, 3, 6, 2, 3, 6], "button": "J", "name": "普通必杀，消耗 1 格怒气"},
-	{"directions": [2, 3, 6], "button": "K", "name": "突进必杀，消耗 1 格怒气"},
+	{"directions": [2, 3, 6], "button": "K", "name": "旋风腿，小技能，不消耗怒气"},
 	{"directions": [2, 1, 4], "button": "U", "name": "后拳必杀，消耗 1 格怒气"},
 	{"directions": [6, 2, 3], "button": "I", "name": "升龙必杀，消耗 1 格怒气"},
 	{"directions": [], "button": "J+K", "name": "投技"},
