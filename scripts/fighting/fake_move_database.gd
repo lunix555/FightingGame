@@ -3,7 +3,7 @@ class_name FakeMoveDatabase
 
 
 static func build_default_moves() -> Array[MoveDefinition]:
-	return [
+	var moves: Array[MoveDefinition] = [
 		_make("5J", "Light Punch", MoveDefinition.MoveType.NORMAL, "", "J", 2, 3, 13, 80, "anim_light_punch", "hit_spark_s", "hit_light"),
 		_make("5K", "Light Kick", MoveDefinition.MoveType.NORMAL, "", "K", 3, 4, 13, 90, "anim_light_kick", "hit_spark_s", "hit_light"),
 		_make("5U", "Heavy Punch", MoveDefinition.MoveType.NORMAL, "", "U", 8, 5, 22, 150, "anim_heavy_punch", "hit_spark_m", "hit_heavy", 1.15, 1.0, MoveDefinition.AttackLevel.MID, 0, true),
@@ -27,6 +27,12 @@ static func build_default_moves() -> Array[MoveDefinition]:
 		_make("5J+K", "Throw", MoveDefinition.MoveType.THROW, "", "J+K", 6, 2, 29, 190, "anim_command_throw", "throw_flash", "throw", 1.15, 1.0, MoveDefinition.AttackLevel.THROW, 0, true, 55),
 		_make("236236O", "Overdrive", MoveDefinition.MoveType.SUPER, "236236", "O", 25, 15, 40, 430, "anim_overdrive", "super_flash", "super", 1.15, 1.0, MoveDefinition.AttackLevel.MID, 200, true, 70),
 	]
+	for move in moves:
+		if move.id in ["236236J", "6246K"]:
+			move.cinematic_enabled = true
+			move.cinematic_duration_frames = 150 if move.id == "236236J" else 210
+			move.cinematic_damage = 140 if move.id == "236236J" else 280
+	return moves
 
 
 static func load_moves_from_folder(folder_path: String) -> Array[MoveDefinition]:

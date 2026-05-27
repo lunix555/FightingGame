@@ -136,6 +136,20 @@ data/moves/akame/*.tres
 
 招式到动作槽的对应关系在 `scripts/fighting/fighter_controller.gd` 的 `MOVE_VISUALS`，例如 `anim_fireball -> punch`、`anim_heavy_kick -> kick`。新增动作槽后，需要同时扩展角色的 `visual.animations` 和 `MOVE_VISUALS`。
 
+仓库里已放入一套通过动画检查后接入的 Dawn Mage 测试角色：
+
+- 资源目录：`assets/characters/dawn_mage/`
+- 授权说明：`assets/characters/dawn_mage/README.md`
+- 当前接入角色：`Dawn Mage`
+- 使用文件：`assets/characters/dawn_mage/anime_female_mage.glb`
+- 已验证动画：`combat_idle_01`、`combat_run_01`、`combat_attack_01`、`combat_attack_02`、`combat_spin_up_01`、`combat_defeat_01`、`combat_get_up_01`
+
+新角色接入前可以先跑验证脚本，确认模型内真的有要映射的动画：
+
+```powershell
+& $env:GODOT_BIN --headless --path . --script res://scripts/tools/validate_character_visual.gd -- res://assets/characters/dawn_mage/anime_female_mage.glb combat_idle_01 combat_run_01 combat_attack_01 combat_attack_02
+```
+
 ## 招式、特效和飞行道具
 
 招式数据在 `data/moves/prototype/*.tres`，每个 `.tres` 是一个 `MoveDefinition`。
@@ -210,7 +224,7 @@ assets/cinematics/<character_id>/<move_id>/
 
 招式资源可调字段：
 
-- `cinematic_enabled`：是否强制进入全屏演出。当前 `SPECIAL` 和 `SUPER` 默认也会触发演出。
+- `cinematic_enabled`：是否进入全屏演出。只有明确设为 `true` 的招式会触发，地波、波动拳、升龙等小技能默认不触发。
 - `cinematic_video_path`：演出影片路径，例如 `res://assets/cinematics/akame/236236J/special.ogv`。
 - `cinematic_duration_frames`：没有影片或需要固定演出时间时使用的持续帧数。
 - `cinematic_damage`：演出结束时结算的伤害；填 `-1` 时使用招式自身 `damage`。

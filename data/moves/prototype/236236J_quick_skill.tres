@@ -23,3 +23,6 @@ cancel_on_block = true
 animation_key = "anim_fireball"
 vfx_key = "muzzle_flash"
 sfx_key = "special_1"
+cinematic_enabled = true
+cinematic_duration_frames = 150
+cinematic_damage = 140

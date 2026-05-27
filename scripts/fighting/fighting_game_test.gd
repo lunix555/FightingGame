@@ -45,9 +45,18 @@ const SOUND_PATHS := {
 		"res://assets/audio/SFX_H/H-01c_hit_light_book_02.wav",
 		"res://assets/audio/SFX_H/H-01c_hit_light_book_03.wav",
 	],
-	"hit_medium": "res://assets/audio/kenney_impact/hit_medium.ogg",
-	"hit_heavy": "res://assets/audio/kenney_impact/hit_heavy.ogg",
+	"hit_medium": [
+		"res://assets/audio/SFX_H/H-01a_hit_light_chain_01.wav",
+		"res://assets/audio/SFX_H/H-01a_hit_light_chain_02.wav",
+		"res://assets/audio/SFX_H/H-01a_hit_light_chain_03.wav",
+	],
+	"hit_heavy": [
+		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_01.wav",
+		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_02.wav",
+		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_03.wav",
+	],
 	"block": "res://assets/audio/kenney_impact/block.ogg",
+	"block_success": "res://assets/audio/kenney_impact/block.ogg",
 	"jump": "res://assets/audio/kenney_impact/jump.ogg",
 	"land": "res://assets/audio/kenney_impact/land.ogg",
 	"knockdown": "res://assets/audio/kenney_impact/knockdown.ogg",
@@ -102,6 +111,21 @@ const SOUND_PATHS := {
 }
 const SFX_BASE_VOLUME_DB := -7.0
 const SFX_VOLUME_OFFSETS_DB := {
+	"H-01a": 2.0,
+	"H-01b": 2.0,
+	"H-01c": 2.0,
+	"hit_light": 2.0,
+	"hit_light_chain": 2.0,
+	"hit_light_coffin": 2.0,
+	"hit_light_book": 2.0,
+	"hit_medium": 2.0,
+	"hit_heavy": 2.0,
+	"ui_select": 3.0,
+	"ui_confirm": 3.0,
+	"ui_click": 3.0,
+	"ui_hover": 1.0,
+	"ui_switch": 2.0,
+	"ui_round_fight": 5.0,
 	"U-05": 6.0,
 	"U-07": 6.0,
 	"ui_ko_finish": 6.0,
@@ -118,6 +142,11 @@ const BGM_NEON_STREET_KEY := "bgm_neon_street"
 const BGM_BATTLE_KEYS := ["bgm_battle_drive", "bgm_battle_rush", "bgm_battle_arcade"]
 const BGM_PATHS := {
 	BGM_MAIN_MENU_KEY: "res://assets/audio/BGM/BGM_Main.wav",
+	BGM_CHARACTER_SELECT_KEY: "res://assets/audio/BGM/BGM_Neon Street.wav",
+	BGM_STAGE_SELECT_KEY: "res://assets/audio/BGM/BGM_Neon Street.wav",
+	"bgm_battle_drive": "res://assets/audio/BGM/BGM_Neon Street.wav",
+	"bgm_battle_rush": "res://assets/audio/BGM/BGM_Neon Street.wav",
+	"bgm_battle_arcade": "res://assets/audio/BGM/BGM_Neon Street.wav",
 	BGM_NEON_STREET_KEY: "res://assets/audio/BGM/BGM_Neon Street.wav",
 }
 const FIGHTER_GROUND_Y := -0.42
@@ -182,7 +211,14 @@ const DEFAULT_CHARACTER_VISUAL_PROFILE := {
 const CHARACTER_MOVE_RESOURCE_FOLDERS := {
 	0: "res://data/moves/prototype",
 }
-const BUILD_ID := "20260526-menu-bgm-git-dir"
+const DAWN_MAGE_ANIMATION_NAMES := {
+	"idle": "combat_idle_01",
+	"punch": "combat_attack_01",
+	"kick": "combat_attack_02",
+	"jump": "combat_spin_up_01",
+	"run": "combat_run_01",
+}
+const BUILD_ID := "20260526-tested-dawn-mage"
 const MENU_PANEL_WIDTH := 760.0
 const MENU_PANEL_HEIGHT := 560.0
 const MENU_PANEL_EXPANDED_HEIGHT := 720.0
@@ -292,14 +328,30 @@ const STAGE_DEFINITIONS := [
 	},
 ]
 const CHARACTER_ROSTER := [
-	{"name": "杏目", "style": "平衡型", "color": Color(1.0, 1.0, 1.0)},
-	{"name": "胧火", "style": "近战压制", "color": Color(1.0, 0.62, 0.52)},
-	{"name": "苍岚", "style": "高速突进", "color": Color(0.55, 0.78, 1.0)},
-	{"name": "白羽", "style": "空中战", "color": Color(0.88, 0.95, 1.0)},
-	{"name": "夜刃", "style": "投技择", "color": Color(0.72, 0.62, 1.0)},
-	{"name": "红莲", "style": "火力爆发", "color": Color(1.0, 0.42, 0.35)},
-	{"name": "铃音", "style": "牵制反击", "color": Color(0.66, 1.0, 0.78)},
-	{"name": "铁心", "style": "重击防守", "color": Color(1.0, 0.86, 0.45)},
+	{"name": "Prototype", "style": "Original test fighter", "color": Color(1.0, 1.0, 1.0)},
+	{
+		"name": "Dawn Mage",
+		"style": "CC0 anime mage with tested combat clips",
+		"color": Color(0.92, 0.62, 1.0),
+		"move_folder": "res://data/moves/prototype",
+		"stats": {"walk_speed": 2.55, "dash_speed": 5.95, "jump_speed": 5.1, "air_control_speed": 2.45},
+		"visual": {
+			"base": "res://assets/characters/dawn_mage/anime_female_mage.glb",
+			"animation_scene": "res://assets/characters/dawn_mage/anime_female_mage.glb",
+			"animation_names": DAWN_MAGE_ANIMATION_NAMES,
+			"textures": {
+				"body": "res://assets/characters/dawn_mage/textures/body_color.png",
+				"head": "res://assets/characters/dawn_mage/textures/head_color.png",
+				"face": "res://assets/characters/dawn_mage/textures/head_color.png",
+				"eye": "res://assets/characters/dawn_mage/textures/eyes_color.png",
+				"eyes": "res://assets/characters/dawn_mage/textures/eyes_color.png",
+				"hair": "res://assets/characters/dawn_mage/textures/hair_color.png",
+				"outfit": "res://assets/characters/dawn_mage/textures/outfit_color.png",
+			},
+			"face_right_degrees": 40.0,
+			"face_left_degrees": 320.0,
+		},
+	},
 ]
 const MOVE_LIST_ROWS := [
 	{"directions": [2, 1, 4], "button": "L", "name": "Shadow Step - cross behind"},
@@ -869,7 +921,7 @@ func _setup_fighters() -> void:
 	p1.show_debug_proxy = false
 	p1.visual_target_height = BATTLE_VISUAL_TARGET_HEIGHT
 	_apply_character_resources_to_fighter(p1, p1_character_index)
-	p1.set_visual_facing_angles(debug_face_right_degrees, debug_face_left_degrees)
+	_apply_character_visual_facing(p1, p1_character_index)
 	battle_root.add_child(p1)
 
 	p2 = FighterControllerScript.new()
@@ -882,7 +934,7 @@ func _setup_fighters() -> void:
 	p2.show_debug_proxy = false
 	p2.visual_target_height = BATTLE_VISUAL_TARGET_HEIGHT
 	_apply_character_resources_to_fighter(p2, p2_character_index)
-	p2.set_visual_facing_angles(debug_face_right_degrees, debug_face_left_degrees)
+	_apply_character_visual_facing(p2, p2_character_index)
 	battle_root.add_child(p2)
 
 	p1.set_opponent(p2)
@@ -1306,7 +1358,7 @@ func _show_main_menu() -> void:
 	flow_state = FlowState.MAIN_MENU
 	_unload_battle_scene()
 	_hide_center_overlay()
-	_play_menu_bgm()
+	_play_menu_bgm(BGM_MAIN_MENU_KEY)
 	_set_menu(
 		"3D 格斗原型",
 		"网页端 1V1 格斗测试",
@@ -1320,7 +1372,7 @@ func _show_main_menu() -> void:
 func _show_mode_select() -> void:
 	flow_state = FlowState.MODE_SELECT
 	_unload_battle_scene()
-	_play_menu_bgm()
+	_play_menu_bgm(BGM_MAIN_MENU_KEY)
 	_set_menu(
 		"选择模式",
 		"选择 2P 由电脑控制，还是本地玩家控制。",
@@ -1373,7 +1425,7 @@ func _reset_character_select_state() -> void:
 
 func _show_character_select() -> void:
 	flow_state = FlowState.CHARACTER_SELECT
-	_play_menu_bgm()
+	_play_menu_bgm(BGM_CHARACTER_SELECT_KEY)
 	_reset_character_select_state()
 	_hide_menu()
 
@@ -1597,9 +1649,9 @@ func _make_character_model_preview(player: int) -> Control:
 	fighter.show_debug_proxy = false
 	fighter.use_fbx_visual = true
 	fighter.visual_target_height = 2.05
-	_apply_character_resources_to_fighter(fighter, p1_character_index if player == 1 else p2_character_index)
-	fighter.set_visual_facing_angles(debug_face_right_degrees, debug_face_left_degrees)
 	fighter.facing_right = player == 1
+	_apply_character_resources_to_fighter(fighter, p1_character_index if player == 1 else p2_character_index)
+	_apply_character_visual_facing(fighter, p1_character_index if player == 1 else p2_character_index)
 	fighter.position = Vector3(0.0, -0.68, 0.0)
 	world.add_child(fighter)
 	call_deferred("_prepare_character_preview_model", fighter, viewport)
@@ -1614,7 +1666,7 @@ func _make_character_model_preview(player: int) -> Control:
 
 func _prepare_character_preview_model(fighter: FighterController, viewport: SubViewport) -> void:
 	if fighter.visual_model != null:
-		fighter.set_visual_facing_angles(debug_face_right_degrees, debug_face_left_degrees)
+		_apply_character_visual_facing(fighter, int(fighter.get_meta("character_index", 0)))
 		fighter._apply_visual_facing()
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 
@@ -1698,7 +1750,7 @@ func _on_character_tile_gui_input(event: InputEvent, index: int) -> void:
 		var mouse_event := event as InputEventMouseButton
 		if mouse_event.button_index != MOUSE_BUTTON_LEFT or not mouse_event.pressed:
 			return
-		_play_sfx("ui_click")
+		_play_sfx("ui_select")
 		p1_character_index = index
 		_update_character_select_view()
 		if mouse_event.double_click:
@@ -1733,6 +1785,7 @@ func _move_character_cursor(player: int, x_delta: int, y_delta: int) -> void:
 		p1_character_index = index
 	else:
 		p2_character_index = index
+	_play_sfx("ui_select")
 	_update_character_select_view()
 
 
@@ -1743,6 +1796,7 @@ func _lock_character(player: int) -> void:
 		p1_character_locked = true
 	else:
 		p2_character_locked = true
+	_play_sfx("ui_confirm")
 	_update_character_select_view()
 	if _character_select_ready():
 		_show_stage_select()
@@ -1756,7 +1810,7 @@ func _character_select_ready() -> bool:
 
 func _show_stage_select() -> void:
 	flow_state = FlowState.STAGE_SELECT
-	_play_menu_bgm()
+	_play_menu_bgm(BGM_STAGE_SELECT_KEY)
 	stage_cursor_index = 0
 	_hide_menu()
 
@@ -1930,7 +1984,7 @@ func _on_stage_tile_gui_input(event: InputEvent, option_index: int) -> void:
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
 		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
-			_play_sfx("ui_click")
+			_play_sfx("ui_select")
 			stage_cursor_index = option_index
 			_update_stage_select_view()
 			if mouse_event.double_click:
@@ -1944,6 +1998,7 @@ func _move_stage_cursor(x_delta: int, y_delta: int) -> void:
 	column = wrapi(column + x_delta, 0, STAGE_GRID_COLUMNS)
 	row = wrapi(row + y_delta, 0, row_count)
 	stage_cursor_index = mini(row * STAGE_GRID_COLUMNS + column, _stage_option_count() - 1)
+	_play_sfx("ui_select")
 	_update_stage_select_view()
 
 
@@ -2026,11 +2081,24 @@ func _apply_character_resources_to_fighter(fighter: FighterController, character
 	var move_folder := String(data.get("move_folder", _move_resource_folder_for_character(character_index)))
 	var base_scene := String(visual.get("base", DEFAULT_CHARACTER_VISUAL_PROFILE["base"]))
 	var animations := (visual.get("animations", DEFAULT_CHARACTER_VISUAL_PROFILE["animations"]) as Dictionary).duplicate(true)
+	if visual.has("animation_scene"):
+		for key in DEFAULT_CHARACTER_VISUAL_PROFILE["animations"].keys():
+			animations[key] = String(visual["animation_scene"])
 	var textures := (visual.get("textures", DEFAULT_CHARACTER_VISUAL_PROFILE["textures"]) as Dictionary).duplicate(true)
 	var move_overrides := (data.get("move_overrides", {}) as Dictionary).duplicate(true)
-	fighter.apply_character_resources(move_folder, base_scene, animations, textures, move_overrides)
+	var animation_names := (visual.get("animation_names", {}) as Dictionary).duplicate(true)
+	fighter.apply_character_resources(move_folder, base_scene, animations, textures, move_overrides, animation_names)
 	_apply_fighter_stat_overrides(fighter, data.get("stats", {}) as Dictionary)
 	fighter.set_meta("character_index", character_index)
+
+
+func _apply_character_visual_facing(fighter: FighterController, character_index: int) -> void:
+	if fighter == null:
+		return
+	var visual := _character_visual_profile(character_index)
+	var face_right := float(visual.get("face_right_degrees", debug_face_right_degrees))
+	var face_left := float(visual.get("face_left_degrees", debug_face_left_degrees))
+	fighter.set_visual_facing_angles(face_right, face_left)
 
 
 func _apply_fighter_stat_overrides(fighter: FighterController, stats: Dictionary) -> void:
@@ -2074,9 +2142,13 @@ func _update_character_preview(player: int) -> void:
 	if status_label != null:
 		status_label.text = "已确认" if locked else "选择中"
 		status_label.modulate = Color(0.35, 1.0, 0.48) if locked else Color(1.0, 0.86, 0.25)
+	if preview_fighter != null:
+		preview_fighter.facing_right = player == 1
 	if preview_fighter != null and int(preview_fighter.get_meta("character_index", -1)) != index:
 		_apply_character_resources_to_fighter(preview_fighter, index)
-		preview_fighter.set_visual_facing_angles(debug_face_right_degrees, debug_face_left_degrees)
+		_apply_character_visual_facing(preview_fighter, index)
+	elif preview_fighter != null:
+		preview_fighter._apply_visual_facing()
 
 
 func _apply_character_tile_style(tile: PanelContainer, index: int) -> void:
@@ -2141,7 +2213,7 @@ func _begin_match() -> void:
 
 
 func _show_battle_loading_screen() -> void:
-	_play_menu_bgm()
+	_play_menu_bgm(BGM_STAGE_SELECT_KEY)
 	_set_menu(
 		"加载战斗中",
 		"正在创建战斗场景、角色模型和对战界面，请稍等。",
@@ -2562,7 +2634,7 @@ func _adjust_visual_facing_angles(delta: float) -> void:
 func _apply_visual_facing_angles_to_active_fighters() -> void:
 	for fighter in [p1, p2, p1_select_preview_fighter, p2_select_preview_fighter]:
 		if fighter != null and is_instance_valid(fighter):
-			fighter.set_visual_facing_angles(debug_face_right_degrees, debug_face_left_degrees)
+			_apply_character_visual_facing(fighter, int(fighter.get_meta("character_index", 0)))
 			fighter.refresh_facing_from_opponent()
 			if fighter.opponent == null:
 				fighter._apply_visual_facing()
@@ -3293,16 +3365,16 @@ func _sfx_stream(sound_key: String) -> AudioStream:
 	if sound_stream_cache.has(cache_key):
 		return sound_stream_cache[cache_key] as AudioStream
 	var stream: AudioStream = null
-	if sound_key == GENERATED_BLOCK_SOUND_KEY:
-		stream = _generated_block_sound()
-	elif SOUND_PATHS.has(sound_key):
+	if SOUND_PATHS.has(sound_key):
 		stream = ResourceLoader.load(cache_key) as AudioStream
+	elif sound_key == GENERATED_BLOCK_SOUND_KEY:
+		stream = _generated_block_sound()
 	sound_stream_cache[cache_key] = stream
 	return stream
 
 
 func _play_battle_bgm() -> void:
-	var volume_db := -10.0
+	var volume_db := -5.0
 	if current_battle_bgm_key.is_empty():
 		var stage := _get_selected_stage()
 		current_battle_bgm_key = String(stage.get("bgm_key", ""))
@@ -3314,14 +3386,14 @@ func _play_battle_bgm() -> void:
 		return
 	push_warning("Battle BGM failed, falling back to generated BGM: %s" % current_battle_bgm_key)
 	current_battle_bgm_key = String(BGM_BATTLE_KEYS[randi() % BGM_BATTLE_KEYS.size()])
-	_play_bgm(current_battle_bgm_key, -10.0)
+	_play_bgm(current_battle_bgm_key, -5.0)
 
 
-func _play_menu_bgm() -> void:
-	if _play_bgm(BGM_MAIN_MENU_KEY, -7.0):
+func _play_menu_bgm(bgm_key: String = BGM_MAIN_MENU_KEY) -> void:
+	if _play_bgm(bgm_key, -4.0):
 		return
-	push_warning("Menu BGM failed, falling back to generated BGM: %s" % BGM_MAIN_MENU_KEY)
-	_play_bgm(BGM_MENU_FALLBACK_KEY, -7.0)
+	push_warning("Menu BGM failed, falling back to generated BGM: %s" % bgm_key)
+	_play_bgm(BGM_MENU_FALLBACK_KEY, -4.0)
 
 
 func _stop_battle_bgm() -> void:

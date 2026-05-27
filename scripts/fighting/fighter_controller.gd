@@ -61,9 +61,10 @@ const SLASH_EFFECT_Y := 1.78
 @export var show_debug_proxy := false
 @export_dir var move_resource_folder := "res://data/moves/prototype"
 @export var moves: Array[MoveDefinition] = []
-@export_file("*.fbx", "*.FBX") var base_visual_scene := DEFAULT_BASE_VISUAL_SCENE
+@export_file("*.fbx", "*.FBX", "*.glb", "*.GLB", "*.gltf", "*.GLTF") var base_visual_scene := DEFAULT_BASE_VISUAL_SCENE
 @export var visual_scene_paths := DEFAULT_VISUAL_SCENES.duplicate()
 @export var visual_texture_paths := DEFAULT_TEXTURE_SET.duplicate()
+@export var visual_animation_names := {}
 @export var move_overrides := {}
 @export var animation_slots := {
 	"idle": "",
@@ -217,13 +218,15 @@ func _ready() -> void:
 
 func set_opponent(value: FighterController) -> void:
 	opponent = value
+	refresh_facing_from_opponent()
 
 
-func apply_character_resources(move_folder: String, base_scene: String, scene_paths: Dictionary, texture_paths: Dictionary, overrides: Dictionary = {}) -> void:
+func apply_character_resources(move_folder: String, base_scene: String, scene_paths: Dictionary, texture_paths: Dictionary, overrides: Dictionary = {}, animation_names: Dictionary = {}) -> void:
 	move_resource_folder = move_folder
 	base_visual_scene = base_scene
 	visual_scene_paths = scene_paths.duplicate(true)
 	visual_texture_paths = texture_paths.duplicate(true)
+	visual_animation_names = animation_names.duplicate(true)
 	move_overrides = overrides.duplicate(true)
 	moves.clear()
 	visual_cache.clear()
@@ -695,7 +698,7 @@ func receive_cinematic_damage(move: MoveDefinition, attacker: FighterController,
 func should_trigger_cinematic(move: MoveDefinition) -> bool:
 	if move == null:
 		return false
-	return move.cinematic_enabled or move.move_type in [MoveDefinition.MoveType.SPECIAL, MoveDefinition.MoveType.SUPER]
+	return move.cinematic_enabled
 
 
 func _apply_unblocked_hit_damage(move: MoveDefinition, attacker: FighterController, damage: int) -> int:
@@ -1327,14 +1330,23 @@ func _ensure_base_visual() -> bool:
 	_apply_visual_materials(visual_model)
 	visual_animation_player = _find_animation_player(visual_model)
 	if visual_animation_player == null:
-		return false
-	_register_existing_base_animation("base")
+		visual_animation_player = AnimationPlayer.new()
+		visual_animation_player.name = "FallbackAnimationPlayer"
+		visual_model.add_child(visual_animation_player)
+		_add_visual_animation("base", Animation.new())
+		visual_cache["base"] = "base"
+	else:
+		_register_existing_base_animation("base")
 	return true
 
 
 func _ensure_visual_animation(key: String) -> String:
 	if visual_cache.has(key):
 		return String(visual_cache[key])
+	var embedded_animation := _embedded_animation_name_for_key(key)
+	if not embedded_animation.is_empty():
+		visual_cache[key] = embedded_animation
+		return embedded_animation
 
 	var fallback_scene := String(visual_scene_paths.get("idle", DEFAULT_VISUAL_SCENES["idle"]))
 	var scene_path := String(visual_scene_paths.get(key, fallback_scene))
@@ -1351,7 +1363,8 @@ func _ensure_visual_animation(key: String) -> String:
 	if source_player != null:
 		var source_names := source_player.get_animation_list()
 		if not source_names.is_empty():
-			var source_animation := source_player.get_animation(String(source_names[0]))
+			var source_animation_name := _source_animation_name_for_key(key, source_player)
+			var source_animation := source_player.get_animation(source_animation_name)
 			if source_animation != null:
 				animation_name = key
 				var copied_animation := source_animation.duplicate(true) as Animation
@@ -1363,6 +1376,27 @@ func _ensure_visual_animation(key: String) -> String:
 	if animation_name.is_empty():
 		return String(visual_cache.get("base", ""))
 	return animation_name
+
+
+func _embedded_animation_name_for_key(key: String) -> String:
+	if visual_animation_player == null:
+		return ""
+	var requested_name := String(visual_animation_names.get(key, ""))
+	if not requested_name.is_empty() and visual_animation_player.has_animation(requested_name):
+		return requested_name
+	if visual_animation_player.has_animation(key):
+		return key
+	return ""
+
+
+func _source_animation_name_for_key(key: String, source_player: AnimationPlayer) -> String:
+	var requested_name := String(visual_animation_names.get(key, ""))
+	if not requested_name.is_empty() and source_player.has_animation(requested_name):
+		return requested_name
+	if source_player.has_animation(key):
+		return key
+	var source_names := source_player.get_animation_list()
+	return String(source_names[0]) if not source_names.is_empty() else ""
 
 
 func _retarget_visual_animation(animation: Animation, source_model: Node3D) -> void:
@@ -1506,14 +1540,15 @@ func _apply_visual_materials(root: Node) -> void:
 					if source_material == null:
 						source_material = mesh_instance.get_surface_override_material(surface_index)
 					var material_name := "" if source_material == null else source_material.resource_name
-					var texture_path := _texture_for_material(material_name)
+					var texture_path := _texture_for_surface(mesh_instance.name, material_name, surface_index)
 					if texture_path.is_empty():
-						mesh_instance.set_surface_override_material(surface_index, _make_fallback_visual_material())
+						if source_material == null:
+							mesh_instance.set_surface_override_material(surface_index, _make_fallback_visual_material())
 						continue
 					var texture := ResourceLoader.load(texture_path) as Texture2D
 					if texture != null:
 						mesh_instance.set_surface_override_material(surface_index, _make_visual_material(texture))
-					else:
+					elif source_material == null:
 						mesh_instance.set_surface_override_material(surface_index, _make_fallback_visual_material())
 		for child in node.get_children():
 			stack.append(child)
@@ -1521,21 +1556,47 @@ func _apply_visual_materials(root: Node) -> void:
 
 func _texture_for_material(material_name: String) -> String:
 	var lower_name := material_name.to_lower()
-	if lower_name.contains("bdy"):
-		return String(visual_texture_paths.get("body", DEFAULT_TEXTURE_SET["body"]))
-	if lower_name.contains("eye"):
-		return String(visual_texture_paths.get("eye", DEFAULT_TEXTURE_SET["eye"]))
+	if lower_name == "body" or lower_name.contains("bdy"):
+		return _texture_path_for_slot("body")
+	if lower_name == "eyes" or lower_name.contains("eye"):
+		return _texture_path_for_slot("eye")
 	if lower_name.contains("hair"):
-		return String(visual_texture_paths.get("hair", DEFAULT_TEXTURE_SET["hair"]))
+		return _texture_path_for_slot("hair")
+	if lower_name.contains("head"):
+		return _texture_path_for_slot("head")
+	if lower_name.contains("outfit") or lower_name.contains("cloth") or lower_name.contains("costume"):
+		return _texture_path_for_slot("outfit")
 	if lower_name.contains("tail"):
-		return String(visual_texture_paths.get("tail", DEFAULT_TEXTURE_SET["tail"]))
+		return _texture_path_for_slot("tail")
 	if lower_name.contains("face_001"):
-		return String(visual_texture_paths.get("face_detail", DEFAULT_TEXTURE_SET["face_detail"]))
+		return _texture_path_for_slot("face_detail")
 	if lower_name.contains("mayu"):
-		return String(visual_texture_paths.get("mayu", DEFAULT_TEXTURE_SET["mayu"]))
+		return _texture_path_for_slot("mayu")
 	if lower_name.contains("face"):
-		return String(visual_texture_paths.get("face", DEFAULT_TEXTURE_SET["face"]))
+		return _texture_path_for_slot("face")
 	return ""
+
+
+func _texture_for_surface(mesh_name: String, material_name: String, surface_index: int) -> String:
+	var texture_path := _texture_for_material(material_name)
+	if not texture_path.is_empty():
+		return texture_path
+	texture_path = _texture_for_material(mesh_name)
+	if not texture_path.is_empty() and mesh_name.to_lower() != "body":
+		return texture_path
+	if mesh_name.to_lower() == "body":
+		match surface_index:
+			0:
+				return _texture_path_for_slot("head")
+			1:
+				return _texture_path_for_slot("body")
+			2:
+				return _texture_path_for_slot("eye")
+	return texture_path
+
+
+func _texture_path_for_slot(slot: String) -> String:
+	return String(visual_texture_paths.get(slot, ""))
 
 
 func _make_visual_material(texture: Texture2D) -> StandardMaterial3D:
