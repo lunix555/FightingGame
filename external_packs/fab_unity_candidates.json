@@ -1,0 +1,65 @@
+[
+  {
+    "slug": "youko",
+    "display_name": "Youko",
+    "store": "Fab",
+    "source_url": "https://www.fab.com/listings/a0fd35a4-40a6-4cbe-8a1f-c32162133e16",
+    "fit": "Anime style, textured character candidate.",
+    "risk": "Fab page indicates no built-in animation tracks in the previewed candidate set; pair with a humanoid combat animation pack and retarget before adding to roster.",
+    "status": "download_required"
+  },
+  {
+    "slug": "akira",
+    "display_name": "Akira",
+    "store": "Fab",
+    "source_url": "https://www.fab.com/listings/e0be0188-a6e0-4d62-a456-32db147efe82",
+    "fit": "Anime style, textured character candidate.",
+    "risk": "Needs source download and animation retarget verification.",
+    "status": "download_required"
+  },
+  {
+    "slug": "vexa",
+    "display_name": "Stylized Female Character / Vexa",
+    "store": "Fab",
+    "source_url": "https://www.fab.com/listings/cf27f4090f0741a5aeec6f7c0a043a12",
+    "fit": "Stylized full-proportion female character with local Fab cache showing idle, dash, jump, sword attack, sword slash, damage and death animation assets.",
+    "risk": "Exported through local Unreal and validated in Godot. Verify Fab entitlement before redistributing the packed asset files.",
+    "status": "imported_and_validated"
+  },
+  {
+    "slug": "cici_toon_hayakawa",
+    "display_name": "CiciToon Hayakawa",
+    "store": "Fab",
+    "source_url": "https://www.fab.com/listings/8b775420c20c4d8ea22a3b5e5067738e",
+    "fit": "Anime cel-shaded character already present in local Fab cache with mesh, textures and several pose/idle animation assets.",
+    "risk": "Local cache is Unreal .uasset only and the visible animations are not fighting-focused. Export from Unreal Editor and test before adding to roster.",
+    "status": "local_unreal_cache_export_required"
+  },
+  {
+    "slug": "combat_magic_animations",
+    "display_name": "Combat Magic Animations",
+    "store": "Fab",
+    "source_url": "https://www.fab.com/listings/a7f94185504045199f8c55d57f1130f9",
+    "fit": "Local Fab cache shows fireball charge, fireball spell, magic defend, unarmed attacks, dash, jump, walk, jog, hit reactions and death assets.",
+    "risk": "Animation pack only, Unreal .uasset cache only. Export as FBX from Unreal and retarget to a character.",
+    "status": "local_unreal_cache_export_required"
+  },
+  {
+    "slug": "ramsterz_free_anims_volume_1",
+    "display_name": "RamsterZ Free Anims Volume 1",
+    "store": "Fab",
+    "source_url": "https://www.fab.com/listings/adf7ab37ac244e2ea749da85e40e7190",
+    "fit": "Local Fab cache shows hand-to-hand idle, kick, punch combo and paired attack animation assets.",
+    "risk": "Animation pack only, Unreal .uasset cache only. Export as FBX from Unreal and retarget to a character.",
+    "status": "local_unreal_cache_export_required"
+  },
+  {
+    "slug": "anime_character_pack",
+    "display_name": "Anime Character Pack",
+    "store": "Unity Asset Store",
+    "source_url": "https://assetstore.unity.com/packages/3d/characters/humanoids/humans/anime-character-pack-213653",
+    "fit": "Multiple humanoid anime characters; suitable for retargeting if source FBX and textures are present.",
+    "risk": "Unity Asset Store download requires account/library access; animation coverage must be tested.",
+    "status": "download_required"
+  }
+]

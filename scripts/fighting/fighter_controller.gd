@@ -43,6 +43,9 @@ const THROW_EFFECT_Y := 1.38
 const STANDING_ATTACK_EFFECT_Y := 1.82
 const STANDING_PROJECTILE_SPAWN_Y := 1.82
 const SLASH_EFFECT_Y := 1.78
+const KNOCKDOWN_FALL_VISUAL_FRAMES := 42
+const KNOCKDOWN_GETUP_VISUAL_FRAMES := 30
+const KNOCKDOWN_ANIMATED_MIN_FRAMES := 96
 
 @export var action_prefix := "p1"
 @export var character_name := "Prototype"
@@ -64,6 +67,7 @@ const SLASH_EFFECT_Y := 1.78
 @export_file("*.fbx", "*.FBX", "*.glb", "*.GLB", "*.gltf", "*.GLTF") var base_visual_scene := DEFAULT_BASE_VISUAL_SCENE
 @export var visual_scene_paths := DEFAULT_VISUAL_SCENES.duplicate()
 @export var visual_texture_paths := DEFAULT_TEXTURE_SET.duplicate()
+@export var visual_fallback_color := Color(0.8, 0.82, 0.86)
 @export var visual_animation_names := {}
 @export var move_overrides := {}
 @export var animation_slots := {
@@ -110,6 +114,10 @@ var visual_model: Node3D
 var visual_animation_player: AnimationPlayer
 var visual_key := ""
 var visual_cache := {}
+var visual_state_override_key := ""
+var visual_state_override_frames := 0
+var hitstun_visual_key := "hit"
+var knockdown_visual_key := "knockdown"
 var attack_effect: MeshInstance3D
 var attack_effect_material_cache := {}
 var impact_flash: MeshInstance3D
@@ -148,17 +156,17 @@ const MOVE_VISUALS := {
 	"anim_light_punch": "punch",
 	"anim_heavy_punch": "punch",
 	"anim_forward_heavy": "punch",
-	"anim_back_fist": "punch",
+	"anim_back_fist": "backstep",
 	"anim_fireball": "punch",
 	"anim_overdrive": "punch",
 	"anim_light_kick": "kick",
 	"anim_heavy_kick": "kick",
-	"anim_crouch_kick": "kick",
-	"anim_advancing_kick": "kick",
-	"anim_rising_upper": "kick",
+	"anim_crouch_kick": "crouch_kick",
+	"anim_advancing_kick": "hurricane_kick",
+	"anim_rising_upper": "jump_alt",
 	"anim_dust": "kick",
 	"anim_command_throw": "punch",
-	"anim_dash": "run",
+	"anim_dash": "dash",
 }
 
 const DEFAULT_TEXTURE_SET := {
@@ -185,6 +193,7 @@ const TUNABLE_MOVE_PROPERTIES := {
 	"hit_height": true,
 	"pushback_on_hit": true,
 	"pushback_on_block": true,
+	"self_velocity_x": true,
 	"hitstop_on_hit": true,
 	"hitstop_on_block": true,
 	"knockdown_on_hit": true,
@@ -226,11 +235,15 @@ func apply_character_resources(move_folder: String, base_scene: String, scene_pa
 	base_visual_scene = base_scene
 	visual_scene_paths = scene_paths.duplicate(true)
 	visual_texture_paths = texture_paths.duplicate(true)
+	visual_fallback_color = texture_paths.get("_fallback_color", Color(0.8, 0.82, 0.86)) as Color
 	visual_animation_names = animation_names.duplicate(true)
 	move_overrides = overrides.duplicate(true)
 	moves.clear()
 	visual_cache.clear()
 	visual_key = ""
+	visual_state_override_key = ""
+	visual_state_override_frames = 0
+	hitstun_visual_key = "hit"
 	if visual_model != null:
 		visual_model.queue_free()
 		visual_model = null
@@ -268,6 +281,7 @@ func reset_for_round(spawn_position: Vector3, round_health: int, reset_meter: bo
 	current_move = null
 	wakeup_invuln_frames = 0
 	throw_invuln_frames = 0
+	hitstun_visual_key = "hit"
 	block_shield_frames = 0
 	_hide_block_shield()
 	_reset_combo()
@@ -425,9 +439,12 @@ func _tick_attack() -> void:
 		_enter_state(FighterState.IDLE)
 		return
 
+	var phase := current_move.phase_at(state_frame)
 	if not is_on_floor():
 		_apply_air_control()
 		velocity.y -= gravity / 60.0
+	elif current_move.self_velocity_x > 0.0 and phase in ["startup", "active"]:
+		velocity.x = current_move.self_velocity_x * (1.0 if facing_right else -1.0)
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, walk_speed / 12.0)
 	move_and_slide()
@@ -437,7 +454,6 @@ func _tick_attack() -> void:
 		_tick_charge_attack()
 		return
 
-	var phase := current_move.phase_at(state_frame)
 	if _try_attack_cancel(phase):
 		return
 	hitbox_area.monitoring = phase == "active" and not current_move.projectile_enabled
@@ -679,6 +695,7 @@ func receive_unblocked_contact(move: MoveDefinition, attacker: FighterController
 func receive_cinematic_setup(move: MoveDefinition, attacker: FighterController) -> int:
 	if move == null or is_invulnerable_to_hits():
 		return 0
+	_set_hitstun_visual_key(false)
 	_show_impact_flash(move, false)
 	sound_requested.emit(_hit_sound_key(move))
 	velocity = Vector3.ZERO
@@ -702,6 +719,8 @@ func should_trigger_cinematic(move: MoveDefinition) -> bool:
 
 
 func _apply_unblocked_hit_damage(move: MoveDefinition, attacker: FighterController, damage: int) -> int:
+	var was_crouching := is_on_floor() and (state == FighterState.CROUCH or last_direction in [1, 2, 3])
+	_set_hitstun_visual_key(was_crouching)
 	health = max(0, health - damage)
 	_register_combo_damage(damage)
 	_show_impact_flash(move, false)
@@ -718,11 +737,22 @@ func _apply_unblocked_hit_damage(move: MoveDefinition, attacker: FighterControll
 	if not is_on_floor() and (move.knockdown_on_hit or move.move_type in [MoveDefinition.MoveType.SPECIAL, MoveDefinition.MoveType.SUPER]):
 		should_knockdown = true
 	if should_knockdown:
-		_enter_knockdown(move.knockdown_frames, move.preserve_launch_on_knockdown)
+		_enter_knockdown(move.knockdown_frames, move.preserve_launch_on_knockdown, was_crouching)
 	else:
 		_enter_state(FighterState.HITSTUN)
 		state_frame = -maxi(move.hitstun_frames, move.air_hitstun_frames if not is_on_floor() else move.hitstun_frames)
 	return damage
+
+
+func _set_hitstun_visual_key(was_crouching: bool) -> void:
+	if was_crouching and visual_scene_paths.has("crouch_hit"):
+		hitstun_visual_key = "crouch_hit"
+	elif visual_scene_paths.has("hit"):
+		hitstun_visual_key = "hit"
+	elif visual_scene_paths.has("hit_medium"):
+		hitstun_visual_key = "hit_medium"
+	else:
+		hitstun_visual_key = "idle"
 
 
 func receive_block(move: MoveDefinition, attacker: FighterController) -> int:
@@ -740,7 +770,8 @@ func receive_block(move: MoveDefinition, attacker: FighterController) -> int:
 	state_frame = -maxi(1, move.blockstun_frames)
 
 	if health <= 0:
-		_enter_knockdown(move.knockdown_frames)
+		var was_crouching := is_on_floor() and (state == FighterState.CROUCH or last_direction in [1, 2, 3])
+		_enter_knockdown(move.knockdown_frames, false, was_crouching)
 	return chip
 
 
@@ -752,7 +783,8 @@ func receive_throw(move: MoveDefinition, attacker: FighterController) -> int:
 	_register_combo_damage(damage)
 	velocity = Vector3(1.85 * _push_direction_from_attacker(attacker), 0.0, 0.0)
 	_interrupt_current_action()
-	_enter_knockdown(move.knockdown_frames)
+	var was_crouching := is_on_floor() and (state == FighterState.CROUCH or last_direction in [1, 2, 3])
+	_enter_knockdown(move.knockdown_frames, false, was_crouching)
 	return damage
 
 
@@ -971,14 +1003,24 @@ func _report_rejected_move(move: MoveDefinition) -> void:
 		combat_event.emit("%s 怒气不足：%s 需要 %d，当前 %d" % [character_name, move.command_text(), move.meter_cost, meter])
 
 
-func _enter_knockdown(frames: int, preserve_velocity: bool = false) -> void:
+func _enter_knockdown(frames: int, preserve_velocity: bool = false, was_crouching: bool = false) -> void:
 	if not preserve_velocity:
 		velocity.y = 0.0
-	knockdown_total_frames = maxi(1, frames)
+	knockdown_visual_key = _knockdown_visual_key_for_pose(was_crouching)
+	var minimum_frames := KNOCKDOWN_ANIMATED_MIN_FRAMES if _has_animated_knockdown_visuals() else 1
+	knockdown_total_frames = maxi(minimum_frames, frames)
 	_enter_state(FighterState.KNOCKDOWN)
 	state_frame = -knockdown_total_frames
 	input_buffer.clear()
 	sound_requested.emit("knockdown")
+
+
+func _knockdown_visual_key_for_pose(was_crouching: bool) -> String:
+	if was_crouching and _has_visual_scene("crouch_knockdown"):
+		return "crouch_knockdown"
+	if _has_visual_scene("knockdown"):
+		return "knockdown"
+	return "idle"
 
 
 func can_block_move(move: MoveDefinition, attacker: FighterController) -> bool:
@@ -1048,9 +1090,21 @@ func _enter_state(next_state: FighterState) -> void:
 		hitbox_area.visible = false
 	_hide_attack_effect()
 	_apply_visual_facing()
+	_prepare_visual_state_transition(previous_state, next_state)
 	if next_state == FighterState.JUMP_START and previous_state != FighterState.JUMP_START:
 		sound_requested.emit("jump")
 	state_changed.emit(state_name())
+
+
+func _prepare_visual_state_transition(previous_state: FighterState, next_state: FighterState) -> void:
+	visual_state_override_key = ""
+	visual_state_override_frames = 0
+	if previous_state != FighterState.CROUCH and next_state == FighterState.CROUCH and visual_scene_paths.has("crouch_enter"):
+		visual_state_override_key = "crouch_enter"
+		visual_state_override_frames = 10
+	elif previous_state == FighterState.CROUCH and next_state in [FighterState.IDLE, FighterState.WALK] and visual_scene_paths.has("crouch_exit"):
+		visual_state_override_key = "crouch_exit"
+		visual_state_override_frames = 10
 
 
 func _hit_sound_key(move: MoveDefinition) -> String:
@@ -1274,22 +1328,59 @@ func _update_visual_state() -> void:
 	if not use_fbx_visual or state == FighterState.ATTACK:
 		return
 
-	if state == FighterState.KNOCKDOWN:
-		_set_visual("idle")
-		_apply_knockdown_visual_pose()
+	if visual_state_override_frames > 0 and not visual_state_override_key.is_empty():
+		_set_visual(visual_state_override_key)
+		visual_state_override_frames -= 1
+	elif state == FighterState.KNOCKDOWN:
+		_update_knockdown_visual_state()
+	elif state == FighterState.HITSTUN:
+		_set_visual(hitstun_visual_key)
+	elif state == FighterState.CROUCH:
+		_set_visual("crouch" if visual_scene_paths.has("crouch") else "idle")
+	elif state == FighterState.BLOCK and last_direction in [1, 2, 3]:
+		_set_visual("crouch" if visual_scene_paths.has("crouch") else "idle")
 	elif not is_on_floor() or state in [FighterState.JUMP, FighterState.JUMP_START]:
 		_set_visual("jump")
 	elif absf(velocity.x) > 0.08:
-		_set_visual("run")
+		_set_visual("walk" if visual_scene_paths.has("walk") else "run")
 	else:
 		_set_visual("idle")
+
+
+func _update_knockdown_visual_state() -> void:
+	var remaining_frames := -state_frame
+	if _has_visual_scene("getup") and remaining_frames <= KNOCKDOWN_GETUP_VISUAL_FRAMES:
+		var changed := visual_key != "getup"
+		if changed or visual_model == null:
+			_set_visual("getup")
+		if changed:
+			_play_visual_animation_fit_frames(maxi(1, remaining_frames))
+		return
+
+	if _has_visual_scene(knockdown_visual_key):
+		var changed := visual_key != knockdown_visual_key
+		if changed or visual_model == null:
+			_set_visual(knockdown_visual_key)
+		if changed:
+			_play_visual_animation_fit_frames(KNOCKDOWN_FALL_VISUAL_FRAMES)
+		if knockdown_total_frames + state_frame >= KNOCKDOWN_FALL_VISUAL_FRAMES:
+			_hold_visual_animation_last_frame()
+	else:
+		_set_visual("idle")
+		_apply_knockdown_visual_pose()
 
 
 func _set_visual_for_move(move: MoveDefinition) -> void:
 	if not use_fbx_visual:
 		return
 
-	var key := String(MOVE_VISUALS.get(move.animation_key, "punch"))
+	var move_animation_key := String(move.animation_key)
+	var key := move_animation_key if visual_scene_paths.has(move_animation_key) else String(MOVE_VISUALS.get(move_animation_key, "punch"))
+	if state == FighterState.CROUCH or last_direction in [1, 2, 3]:
+		if move_animation_key in ["anim_light_punch", "anim_heavy_punch"] and visual_scene_paths.has("crouch_punch"):
+			key = "crouch_punch"
+		elif move_animation_key in ["anim_light_kick", "anim_heavy_kick", "anim_crouch_kick"] and visual_scene_paths.has("crouch_kick"):
+			key = "crouch_kick"
 	if should_trigger_cinematic(move):
 		key = "punch"
 	_set_visual(key)
@@ -1309,7 +1400,7 @@ func _set_visual(key: String) -> void:
 
 	visual_key = key
 	_apply_visual_facing()
-	_play_visual_animation(animation_name, key in ["idle", "run", "jump"])
+	_play_visual_animation(animation_name, key in ["idle", "walk", "run", "jump", "crouch"])
 
 
 func _ensure_base_visual() -> bool:
@@ -1381,6 +1472,8 @@ func _ensure_visual_animation(key: String) -> String:
 func _embedded_animation_name_for_key(key: String) -> String:
 	if visual_animation_player == null:
 		return ""
+	if visual_scene_paths.has(key):
+		return ""
 	var requested_name := String(visual_animation_names.get(key, ""))
 	if not requested_name.is_empty() and visual_animation_player.has_animation(requested_name):
 		return requested_name
@@ -1407,31 +1500,76 @@ func _retarget_visual_animation(animation: Animation, source_model: Node3D) -> v
 	if skeleton == null:
 		return
 
-	var skeleton_path := str(visual_model.get_path_to(skeleton))
-	if skeleton_path.is_empty() or skeleton_path == "Skeleton3D":
+	var target_skeleton_path := str(visual_model.get_path_to(skeleton))
+	if target_skeleton_path.is_empty():
 		return
 
 	var source_root_rest := Quaternion.IDENTITY
 	var source_skeleton := _find_skeleton(source_model)
+	var source_skeleton_path := ""
+	var source_hips_rest := Transform3D.IDENTITY
+	var target_hips_rest := Transform3D.IDENTITY
+	var has_hips_rest_pair := false
 	if source_skeleton != null:
+		source_skeleton_path = str(source_model.get_path_to(source_skeleton))
 		var source_root_index := source_skeleton.find_bone("root")
 		if source_root_index >= 0:
 			source_root_rest = source_skeleton.get_bone_rest(source_root_index).basis.get_rotation_quaternion()
+		var source_hips_index := source_skeleton.find_bone("Hips")
+		var target_hips_index := skeleton.find_bone("Hips")
+		if source_hips_index >= 0 and target_hips_index >= 0:
+			source_hips_rest = source_skeleton.get_bone_rest(source_hips_index)
+			target_hips_rest = skeleton.get_bone_rest(target_hips_index)
+			has_hips_rest_pair = true
 	var root_rotation_correction := source_root_rest.inverse()
+	var hips_basis_correction := Basis.IDENTITY
+	if has_hips_rest_pair:
+		hips_basis_correction = target_hips_rest.basis * source_hips_rest.basis.inverse()
 
 	for track_index in range(animation.get_track_count() - 1, -1, -1):
 		var path_text := str(animation.track_get_path(track_index))
 		var track_type := animation.track_get_type(track_index)
-		if path_text == "Skeleton3D:root" and track_type == Animation.TYPE_POSITION_3D:
+		var bone_path := _animation_bone_path_suffix(path_text, source_skeleton_path)
+		if bone_path.is_empty():
+			continue
+		if bone_path == ":root" and track_type == Animation.TYPE_POSITION_3D:
 			animation.remove_track(track_index)
 			continue
-		if path_text == "Skeleton3D:root" and track_type == Animation.TYPE_ROTATION_3D:
+		if bone_path == ":root" and track_type == Animation.TYPE_ROTATION_3D:
 			for key_index in range(animation.track_get_key_count(track_index)):
 				var key_value: Variant = animation.track_get_key_value(track_index, key_index)
 				if key_value is Quaternion:
 					animation.track_set_key_value(track_index, key_index, root_rotation_correction * (key_value as Quaternion))
-		if path_text.begins_with("Skeleton3D"):
-			animation.track_set_path(track_index, NodePath(skeleton_path + path_text.substr("Skeleton3D".length())))
+		if has_hips_rest_pair and bone_path == ":Hips":
+			if track_type == Animation.TYPE_POSITION_3D:
+				for key_index in range(animation.track_get_key_count(track_index)):
+					var key_value: Variant = animation.track_get_key_value(track_index, key_index)
+					if key_value is Vector3:
+						var source_position := key_value as Vector3
+						animation.track_set_key_value(
+							track_index,
+							key_index,
+							target_hips_rest.origin + hips_basis_correction * (source_position - source_hips_rest.origin)
+						)
+			elif track_type == Animation.TYPE_ROTATION_3D:
+				var hips_rotation_correction := target_hips_rest.basis.get_rotation_quaternion() * source_hips_rest.basis.get_rotation_quaternion().inverse()
+				for key_index in range(animation.track_get_key_count(track_index)):
+					var key_value: Variant = animation.track_get_key_value(track_index, key_index)
+					if key_value is Quaternion:
+						animation.track_set_key_value(track_index, key_index, hips_rotation_correction * (key_value as Quaternion))
+		animation.track_set_path(track_index, NodePath(target_skeleton_path + bone_path))
+
+
+func _animation_bone_path_suffix(path_text: String, source_skeleton_path: String) -> String:
+	if not path_text.contains(":"):
+		return ""
+	if not source_skeleton_path.is_empty() and path_text.begins_with(source_skeleton_path + ":"):
+		return path_text.substr(source_skeleton_path.length())
+	var skeleton_marker := "Skeleton3D:"
+	var marker_index := path_text.find(skeleton_marker)
+	if marker_index >= 0:
+		return path_text.substr(marker_index + "Skeleton3D".length())
+	return ""
 
 
 func _register_existing_base_animation(key: String) -> void:
@@ -1484,6 +1622,21 @@ func _play_visual_animation(animation_name: String, should_loop: bool) -> void:
 	visual_animation_player.play(animation_name)
 
 
+func _hold_visual_animation_last_frame() -> void:
+	if visual_animation_player == null:
+		return
+	var animation_name := String(visual_cache.get(visual_key, ""))
+	if animation_name.is_empty():
+		return
+	var animation := visual_animation_player.get_animation(animation_name)
+	if animation == null or animation.length <= 0.001:
+		return
+	animation.loop_mode = Animation.LOOP_NONE
+	visual_animation_player.stop()
+	visual_animation_player.seek(maxf(animation.length - 0.001, 0.0), true)
+	visual_animation_player.advance(0.0)
+
+
 func _apply_visual_facing() -> void:
 	if visual_model == null:
 		return
@@ -1495,10 +1648,20 @@ func _apply_visual_facing() -> void:
 func _knockdown_visual_tilt_degrees() -> float:
 	if state != FighterState.KNOCKDOWN:
 		return 0.0
+	if _has_animated_knockdown_visuals():
+		return 0.0
 	var elapsed := clampf(float(knockdown_total_frames + state_frame), 0.0, 42.0)
 	var fall_t := smoothstep(0.0, 1.0, elapsed / 42.0)
 	var side := -1.0 if facing_right else 1.0
 	return side * lerpf(0.0, 82.0, fall_t)
+
+
+func _has_animated_knockdown_visuals() -> bool:
+	return _has_visual_scene("knockdown") or _has_visual_scene("crouch_knockdown") or _has_visual_scene("getup")
+
+
+func _has_visual_scene(key: String) -> bool:
+	return visual_scene_paths.has(key) and not String(visual_scene_paths.get(key, "")).is_empty()
 
 
 func _apply_knockdown_visual_pose() -> void:
@@ -1542,10 +1705,10 @@ func _apply_visual_materials(root: Node) -> void:
 					var material_name := "" if source_material == null else source_material.resource_name
 					var texture_path := _texture_for_surface(mesh_instance.name, material_name, surface_index)
 					if texture_path.is_empty():
-						if source_material == null:
+						if source_material == null or _should_replace_plain_visual_material(source_material):
 							mesh_instance.set_surface_override_material(surface_index, _make_fallback_visual_material())
 						continue
-					var texture := ResourceLoader.load(texture_path) as Texture2D
+					var texture := _load_visual_texture(texture_path)
 					if texture != null:
 						mesh_instance.set_surface_override_material(surface_index, _make_visual_material(texture))
 					elif source_material == null:
@@ -1564,7 +1727,7 @@ func _texture_for_material(material_name: String) -> String:
 		return _texture_path_for_slot("hair")
 	if lower_name.contains("head"):
 		return _texture_path_for_slot("head")
-	if lower_name.contains("outfit") or lower_name.contains("cloth") or lower_name.contains("costume"):
+	if lower_name.contains("outfit") or lower_name.contains("cloth") or lower_name.contains("costume") or lower_name.contains("jacket"):
 		return _texture_path_for_slot("outfit")
 	if lower_name.contains("tail"):
 		return _texture_path_for_slot("tail")
@@ -1579,6 +1742,12 @@ func _texture_for_material(material_name: String) -> String:
 
 func _texture_for_surface(mesh_name: String, material_name: String, surface_index: int) -> String:
 	var texture_path := _texture_for_material(material_name)
+	if not texture_path.is_empty():
+		return texture_path
+	texture_path = _texture_path_for_slot("default")
+	if not texture_path.is_empty():
+		return texture_path
+	texture_path = _texture_path_for_slot("albedo")
 	if not texture_path.is_empty():
 		return texture_path
 	texture_path = _texture_for_material(mesh_name)
@@ -1599,6 +1768,19 @@ func _texture_path_for_slot(slot: String) -> String:
 	return String(visual_texture_paths.get(slot, ""))
 
 
+func _should_replace_plain_visual_material(material: Material) -> bool:
+	if not visual_texture_paths.has("_fallback_color"):
+		return false
+	if not material is StandardMaterial3D:
+		return false
+	var standard := material as StandardMaterial3D
+	if standard.albedo_texture != null:
+		return false
+	var color := standard.albedo_color
+	var white_delta := absf(color.r - 1.0) + absf(color.g - 1.0) + absf(color.b - 1.0)
+	return white_delta < 0.35
+
+
 func _make_visual_material(texture: Texture2D) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
 	material.albedo_texture = texture
@@ -1606,14 +1788,65 @@ func _make_visual_material(texture: Texture2D) -> StandardMaterial3D:
 	material.roughness = 0.9
 	material.metallic = 0.0
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL if _has_visual_pbr_textures() else BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+	_apply_optional_visual_pbr_textures(material)
 	return material
+
+
+func _has_visual_pbr_textures() -> bool:
+	return visual_texture_paths.has("normal") or visual_texture_paths.has("metallic") or visual_texture_paths.has("roughness") or visual_texture_paths.has("orm")
+
+
+func _apply_optional_visual_pbr_textures(material: StandardMaterial3D) -> void:
+	var normal_texture := _load_visual_texture_slot("normal")
+	if normal_texture != null and _has_object_property(material, "normal_texture"):
+		material.set("normal_texture", normal_texture)
+		if _has_object_property(material, "normal_enabled"):
+			material.set("normal_enabled", true)
+
+	var roughness_texture := _load_visual_texture_slot("roughness")
+	if roughness_texture != null and _has_object_property(material, "roughness_texture"):
+		material.set("roughness_texture", roughness_texture)
+
+	var metallic_texture := _load_visual_texture_slot("metallic")
+	if metallic_texture != null and _has_object_property(material, "metallic_texture"):
+		material.set("metallic_texture", metallic_texture)
+		material.metallic = 1.0
+
+	var orm_texture := _load_visual_texture_slot("orm")
+	if orm_texture != null and _has_object_property(material, "orm_texture"):
+		material.set("orm_texture", orm_texture)
+
+
+func _load_visual_texture_slot(slot: String) -> Texture2D:
+	var texture_path := _texture_path_for_slot(slot)
+	if texture_path.is_empty():
+		return null
+	return _load_visual_texture(texture_path)
+
+
+func _load_visual_texture(texture_path: String) -> Texture2D:
+	if ResourceLoader.exists(texture_path):
+		var texture := ResourceLoader.load(texture_path) as Texture2D
+		if texture != null:
+			return texture
+	var image := Image.new()
+	if image.load(ProjectSettings.globalize_path(texture_path)) != OK:
+		return null
+	return ImageTexture.create_from_image(image)
+
+
+func _has_object_property(object: Object, property_name: String) -> bool:
+	for property in object.get_property_list():
+		if String(property.get("name", "")) == property_name:
+			return true
+	return false
 
 
 func _make_fallback_visual_material() -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.8, 0.82, 0.86)
+	material.albedo_color = visual_fallback_color
 	material.roughness = 0.9
 	material.metallic = 0.0
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED

@@ -34,6 +34,7 @@ enum AttackLevel {
 @export var hitbox_size := Vector2.ZERO
 @export var pushback_on_hit := 0.78
 @export var pushback_on_block := 0.46
+@export var self_velocity_x := 0.0
 @export var hitstop_on_hit := 6
 @export var hitstop_on_block := 4
 @export var launch_velocity := Vector2.ZERO
