@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_move")
 id = "214U"
-display_name = "Back Fist"
+display_name = "后拳反击"
 move_type = 2
 motion = "214"
 button = "U"
@@ -15,7 +15,7 @@ recovery_frames = 32
 hitstun_frames = 20
 blockstun_frames = 11
 damage = 210
-meter_cost = 100
+meter_cost = 0
 chip_damage = 22
 knockdown_on_hit = true
 knockdown_frames = 45

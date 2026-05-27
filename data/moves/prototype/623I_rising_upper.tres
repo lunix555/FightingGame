@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_move")
 id = "623I"
-display_name = "Rising Upper"
+display_name = "升龙拳"
 move_type = 2
 motion = "623"
 button = "I"
@@ -16,7 +16,7 @@ hitstun_frames = 17
 blockstun_frames = 9
 damage = 220
 launch_velocity = Vector2(0.65, 4.8)
-meter_cost = 100
+meter_cost = 0
 chip_damage = 24
 knockdown_on_hit = true
 knockdown_frames = 50
