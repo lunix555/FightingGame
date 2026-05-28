@@ -237,6 +237,7 @@ const KASHANDELLA_QISHI_ANIMATION_NAMES := {
 	"turn": "Unreal Take",
 	"victory_1": "Unreal Take",
 	"victory_2": "Unreal Take",
+	"victory_3": "Unreal Take",
 }
 const WELA_FASHI_ANIMATION_NAMES := {
 	"idle": "Unreal Take",
@@ -263,6 +264,7 @@ const WELA_FASHI_ANIMATION_NAMES := {
 	"turn": "Unreal Take",
 	"victory_1": "Unreal Take",
 	"victory_2": "Unreal Take",
+	"victory_3": "Unreal Take",
 }
 const BUILD_ID := "20260527-common-action-retarget"
 const MENU_PANEL_WIDTH := 760.0
@@ -407,6 +409,7 @@ const CHARACTER_ROSTER := [
 				"turn": "res://assets/characters/kashandella_qishi/animations/kashandella_qishi_turn.glb",
 				"victory_1": "res://assets/characters/kashandella_qishi/animations/kashandella_qishi_victory_1.glb",
 				"victory_2": "res://assets/characters/kashandella_qishi/animations/kashandella_qishi_victory_2.glb",
+				"victory_3": "res://assets/characters/kashandella_qishi/animations/kashandella_qishi_victory_3.glb",
 			},
 			"animation_names": KASHANDELLA_QISHI_ANIMATION_NAMES,
 			"textures": {
@@ -454,6 +457,7 @@ const CHARACTER_ROSTER := [
 				"turn": "res://assets/characters/wela_fashi/animations/wela_fashi_turn.glb",
 				"victory_1": "res://assets/characters/wela_fashi/animations/wela_fashi_victory_1.glb",
 				"victory_2": "res://assets/characters/wela_fashi/animations/wela_fashi_victory_2.glb",
+				"victory_3": "res://assets/characters/wela_fashi/animations/wela_fashi_victory_3.glb",
 			},
 			"animation_names": WELA_FASHI_ANIMATION_NAMES,
 			"textures": {
@@ -2598,7 +2602,7 @@ func _play_round_victory(fighter: FighterController) -> int:
 	if fighter == null:
 		return 0
 	var victory_keys: Array[String] = []
-	for key in ["victory_1", "victory_2"]:
+	for key in ["victory_1", "victory_2", "victory_3"]:
 		if fighter.has_visual_scene_key(key):
 			victory_keys.append(key)
 	if victory_keys.is_empty():
