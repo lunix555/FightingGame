@@ -38,7 +38,7 @@ const CHARACTERS := [
 	},
 ]
 
-const KEYS := ["idle", "walk", "punch", "kick", "crouch", "hit", "crouch_hit", "knockdown", "crouch_knockdown", "getup", "h2h_kick_01", "h2h_punch_01", "throw_att", "throw_vic", "throw_counter_att", "throw_counter_vic", "throw_groin_att", "throw_groin_vic", "throw_press_att", "throw_press_vic", "throw_push_att", "throw_push_vic", "throw_neck_att", "throw_neck_vic", "throw_knife_att", "throw_knife_vic", "victory_1", "victory_2", "victory_3"]
+const KEYS := ["idle", "walk", "punch", "kick", "crouch", "hit", "crouch_hit", "knockdown", "crouch_knockdown", "getup", "h2h_kick_01", "h2h_punch_01", "rising_upper", "throw_att", "throw_vic", "throw_counter_att", "throw_counter_vic", "throw_groin_att", "throw_groin_vic", "throw_press_att", "throw_press_vic", "throw_push_att", "throw_push_vic", "throw_neck_att", "throw_neck_vic", "throw_knife_att", "throw_knife_vic", "victory_1", "victory_2", "victory_3"]
 
 
 func _initialize() -> void:
@@ -159,6 +159,7 @@ func _animations_for(character: Dictionary) -> Dictionary:
 		"h2h_punch_01": prefix + "h2h_punch_01.glb",
 		"h2h_punch_02": prefix + "h2h_punch_02.glb",
 		"aerial_swing": prefix + "aerial_swing.glb",
+		"rising_upper": prefix + "rising_upper.glb",
 		"throw_att": prefix + "throw_att.glb",
 		"throw_vic": prefix + "throw_vic.glb",
 		"throw_counter_att": prefix + "throw_counter_att.glb",

@@ -23,8 +23,8 @@ static func build_default_moves() -> Array[MoveDefinition]:
 		_make("6246K", "Super Kick", MoveDefinition.MoveType.SUPER, "6246", "K", 14, 12, 36, 390, "anim_overdrive", "super_flash", "super", 4.2, 1.35, MoveDefinition.AttackLevel.MID, 200, true, 70),
 		_make("214U", "后拳反击", MoveDefinition.MoveType.SPECIAL, "214", "U", 5, 8, 32, 210, "anim_back_fist", "hit_spark_l", "special_1", 1.15, 1.0, MoveDefinition.AttackLevel.MID, 0, true),
 		_make("214L", "Shadow Step", MoveDefinition.MoveType.SPECIAL, "214", "L", 5, 0, 16, 0, "anim_dash", "shadow_step", "ui_switch", 0.0, 0.0),
-		_make("623I", "升龙拳", MoveDefinition.MoveType.SPECIAL, "623", "I", 8, 5, 27, 220, "anim_rising_upper", "hit_spark_l", "special_2", 1.15, 1.0, MoveDefinition.AttackLevel.MID, 0, true),
-		_make("5J+K", "Throw", MoveDefinition.MoveType.THROW, "", "J+K", 6, 2, 29, 190, "anim_command_throw", "throw_flash", "throw", 1.15, 1.0, MoveDefinition.AttackLevel.THROW, 0, true, 55),
+		_make("623I", "升龙拳", MoveDefinition.MoveType.SPECIAL, "623", "I", 8, 5, 27, 220, "rising_upper", "hit_spark_l", "special_2", 0.78, 1.32, MoveDefinition.AttackLevel.MID, 0, true),
+		_make("5J+K", "Throw", MoveDefinition.MoveType.THROW, "", "J+K", 6, 2, 29, 190, "anim_command_throw", "throw_flash", "throw", 0.78, 1.0, MoveDefinition.AttackLevel.THROW, 0, true, 55),
 		_make("236236O", "Overdrive", MoveDefinition.MoveType.SUPER, "236236", "O", 25, 15, 40, 430, "anim_overdrive", "super_flash", "super", 1.15, 1.0, MoveDefinition.AttackLevel.MID, 200, true, 70),
 	]
 	for move in moves:
@@ -93,6 +93,8 @@ static func _make(
 	move.meter_cost = meter_cost
 	move.knockdown_on_hit = knockdown_on_hit
 	move.knockdown_frames = knockdown_frames
+	if move_type == MoveDefinition.MoveType.THROW:
+		move.throw_range = hit_range
 	move.cancel_on_block = move_type != MoveDefinition.MoveType.NORMAL
 	move.animation_key = animation_key
 	move.vfx_key = vfx_key
