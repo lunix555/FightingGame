@@ -2,6 +2,7 @@ extends Node3D
 
 const FighterControllerScript := preload("res://scripts/fighting/fighter_controller.gd")
 const FightingProjectileScript := preload("res://scripts/fighting/fighting_projectile.gd")
+const MusicManagerScript := preload("res://scripts/music_manager.gd")
 const PORTRAIT_TEXTURE := preload("res://assets/textures/1129/5.png")
 const UI_TEX_BUTTON := "res://assets/ui/kenney_sci_fi/button_rectangle.png"
 const UI_TEX_BUTTON_BORDER := "res://assets/ui/kenney_sci_fi/button_rectangle_depth.png"
@@ -26,9 +27,10 @@ const SOUND_PATHS := {
 		"res://assets/audio/SFX_H/H-01c_hit_light_book_03.wav",
 	],
 	"hit_light": [
-		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_01.wav",
-		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_02.wav",
-		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_03.wav",
+		"res://assets/audio/SFX_H/H-08_hit_punch_common_01.wav",
+		"res://assets/audio/SFX_H/H-08_hit_punch_common_02.wav",
+		"res://assets/audio/SFX_H/H-08_hit_punch_common_03.wav",
+		"res://assets/audio/SFX_H/H-08_hit_punch_common_04.wav",
 	],
 	"hit_light_chain": [
 		"res://assets/audio/SFX_H/H-01a_hit_light_chain_01.wav",
@@ -46,18 +48,60 @@ const SOUND_PATHS := {
 		"res://assets/audio/SFX_H/H-01c_hit_light_book_03.wav",
 	],
 	"hit_medium": [
-		"res://assets/audio/SFX_H/H-01a_hit_light_chain_01.wav",
-		"res://assets/audio/SFX_H/H-01a_hit_light_chain_02.wav",
-		"res://assets/audio/SFX_H/H-01a_hit_light_chain_03.wav",
+		"res://assets/audio/SFX_H/H-08_hit_punch_common_01.wav",
+		"res://assets/audio/SFX_H/H-08_hit_punch_common_02.wav",
+		"res://assets/audio/SFX_H/H-08_hit_punch_common_03.wav",
+		"res://assets/audio/SFX_H/H-08_hit_punch_common_04.wav",
 	],
 	"hit_heavy": [
-		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_01.wav",
-		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_02.wav",
-		"res://assets/audio/SFX_H/H-01b_hit_light_coffin_03.wav",
+		"res://assets/audio/SFX_H/H-08_hit_kick_common_01.wav",
+		"res://assets/audio/SFX_H/H-08_hit_kick_common_02.wav",
+		"res://assets/audio/SFX_H/H-08_hit_kick_common_03.wav",
+		"res://assets/audio/SFX_H/H-08_hit_kick_common_04.wav",
 	],
+	"H-07a": [
+		"res://assets/audio/SFX_H/H-07a_miss_anchor_whoosh_01.wav",
+		"res://assets/audio/SFX_H/H-07a_miss_anchor_whoosh_02.wav",
+	],
+	"H-07b": [
+		"res://assets/audio/SFX_H/H-07b_miss_coffin_whoosh_01.wav",
+		"res://assets/audio/SFX_H/H-07b_miss_coffin_whoosh_02.wav",
+	],
+	"H-07c": [
+		"res://assets/audio/SFX_H/H-07c_miss_book_whoosh_01.wav",
+		"res://assets/audio/SFX_H/H-07c_miss_book_whoosh_02.wav",
+	],
+	"miss_anchor": [
+		"res://assets/audio/SFX_H/H-07a_miss_anchor_whoosh_01.wav",
+		"res://assets/audio/SFX_H/H-07a_miss_anchor_whoosh_02.wav",
+	],
+	"miss_coffin": [
+		"res://assets/audio/SFX_H/H-07b_miss_coffin_whoosh_01.wav",
+		"res://assets/audio/SFX_H/H-07b_miss_coffin_whoosh_02.wav",
+	],
+	"miss_book": [
+		"res://assets/audio/SFX_H/H-07c_miss_book_whoosh_01.wav",
+		"res://assets/audio/SFX_H/H-07c_miss_book_whoosh_02.wav",
+	],
+	"M-03a": [
+		"res://assets/audio/SFX_M/M-03a_jump_generic_01.wav",
+		"res://assets/audio/SFX_M/M-03a_jump_generic_02.wav",
+		"res://assets/audio/SFX_M/M-03a_jump_generic_03.wav",
+		"res://assets/audio/SFX_M/M-03a_jump_generic_04.wav",
+		"res://assets/audio/SFX_M/M-03a_jump_generic_05.wav",
+		"res://assets/audio/SFX_M/M-03a_jump_generic_06.wav",
+	],
+	"footstep": "res://assets/audio/SFX_M/0019 - VFAFS Boots Concrete - Audio - miss.wav",
 	"block": "res://assets/audio/kenney_impact/block.ogg",
 	"block_success": "res://assets/audio/kenney_impact/block.ogg",
-	"jump": "res://assets/audio/kenney_impact/jump.ogg",
+	"jump": [
+		"res://assets/audio/SFX_M/M-03a_jump_generic_01.wav",
+		"res://assets/audio/SFX_M/M-03a_jump_generic_02.wav",
+		"res://assets/audio/SFX_M/M-03a_jump_generic_03.wav",
+		"res://assets/audio/SFX_M/M-03a_jump_generic_04.wav",
+		"res://assets/audio/SFX_M/M-03a_jump_generic_05.wav",
+		"res://assets/audio/SFX_M/M-03a_jump_generic_06.wav",
+	],
 	"land": "res://assets/audio/kenney_impact/land.ogg",
 	"knockdown": "res://assets/audio/kenney_impact/knockdown.ogg",
 	"projectile_light": "res://assets/audio/kenney_combat/projectile_light.ogg",
@@ -120,35 +164,20 @@ const SFX_VOLUME_OFFSETS_DB := {
 	"hit_light_book": 2.0,
 	"hit_medium": 2.0,
 	"hit_heavy": 2.0,
+	"footstep": -1.0,
 	"ui_select": 3.0,
 	"ui_confirm": 3.0,
 	"ui_click": 3.0,
 	"ui_hover": 1.0,
 	"ui_switch": 2.0,
 	"ui_round_fight": 5.0,
-	"U-05": 6.0,
+	"U-05": 9.0,
 	"U-07": 6.0,
-	"ui_ko_finish": 6.0,
+	"ui_ko_finish": 9.0,
 	"ui_fail": 6.0,
 }
 const UI_FONT_PATH := "res://assets/fonts/simhei.ttf"
 const GENERATED_BLOCK_SOUND_KEY := "block_success"
-const GENERATED_BGM_KEY := "battle_bgm"
-const BGM_MAIN_MENU_KEY := "bgm_main"
-const BGM_MENU_FALLBACK_KEY := "bgm_menu_neon"
-const BGM_CHARACTER_SELECT_KEY := "bgm_character_select_fire"
-const BGM_STAGE_SELECT_KEY := "bgm_stage_select_grid"
-const BGM_NEON_STREET_KEY := "bgm_neon_street"
-const BGM_BATTLE_KEYS := ["bgm_battle_drive", "bgm_battle_rush", "bgm_battle_arcade"]
-const BGM_PATHS := {
-	BGM_MAIN_MENU_KEY: "res://assets/audio/BGM/BGM_Main.wav",
-	BGM_CHARACTER_SELECT_KEY: "res://assets/audio/BGM/BGM_Neon Street.wav",
-	BGM_STAGE_SELECT_KEY: "res://assets/audio/BGM/BGM_Neon Street.wav",
-	"bgm_battle_drive": "res://assets/audio/BGM/BGM_Neon Street.wav",
-	"bgm_battle_rush": "res://assets/audio/BGM/BGM_Neon Street.wav",
-	"bgm_battle_arcade": "res://assets/audio/BGM/BGM_Neon Street.wav",
-	BGM_NEON_STREET_KEY: "res://assets/audio/BGM/BGM_Neon Street.wav",
-}
 const FIGHTER_GROUND_Y := -0.42
 const P1_SPAWN := Vector3(-1.35, FIGHTER_GROUND_Y, 0.0)
 const P2_SPAWN := Vector3(1.35, FIGHTER_GROUND_Y, 0.0)
@@ -322,8 +351,6 @@ const STAGE_DEFINITIONS := [
 		"subtitle": "Cyberpunk city crosswalk",
 		"preview": "res://assets/backgrounds/cyberpunk_street/preview.png",
 		"root": "res://assets/backgrounds/cyberpunk_street/",
-		"bgm_key": BGM_NEON_STREET_KEY,
-		"bgm_volume_db": -4.0,
 		"layers": [
 			{"texture": "far-buildings.png", "size": Vector2(12.8, 5.75), "position": Vector3(0.0, 2.03, -2.55), "parallax": 0.05, "alpha": 1.0},
 			{"texture": "back-buildings.png", "size": Vector2(12.8, 5.75), "position": Vector3(0.0, 2.03, -2.35), "parallax": 0.16, "alpha": 1.0},
@@ -861,11 +888,8 @@ var projectiles: Array = []
 var ui_font: FontFile
 var sfx_players: Array[AudioStreamPlayer] = []
 var sfx_player_index := 0
-var bgm_player: AudioStreamPlayer
-var current_bgm_key := ""
-var current_battle_bgm_key := ""
-var current_bgm_volume_db := -16.0
-var audio_unlocked_by_input := false
+var footstep_players := {}
+var music_manager: MusicManager
 var ui_style_cache := {}
 var ui_texture_cache := {}
 var sound_stream_cache := {}
@@ -978,6 +1002,7 @@ func _physics_process(_delta: float) -> void:
 			p2.input_buffer.clear_scripted_state()
 		_update_camera()
 
+	_sync_footstep_players()
 	_update_hud()
 
 
@@ -1008,11 +1033,9 @@ func _setup_audio() -> void:
 		player.volume_db = SFX_BASE_VOLUME_DB
 		add_child(player)
 		sfx_players.append(player)
-	bgm_player = AudioStreamPlayer.new()
-	bgm_player.name = "BgmPlayer"
-	bgm_player.bus = "Master"
-	bgm_player.volume_db = current_bgm_volume_db
-	add_child(bgm_player)
+	music_manager = MusicManagerScript.new()
+	music_manager.name = "MusicManager"
+	add_child(music_manager)
 
 
 func _load_battle_scene() -> void:
@@ -1024,12 +1047,14 @@ func _load_battle_scene() -> void:
 	_setup_world()
 	_setup_fighters()
 	_setup_hud()
-	_play_battle_bgm()
+	_play_battle_music()
 
 
 func _unload_battle_scene() -> void:
 	_hide_center_overlay()
-	_stop_battle_bgm()
+	var had_battle := battle_root != null or battle_hud_root != null
+	if had_battle:
+		_stop_battle_music()
 	if battle_hud_root != null:
 		battle_hud_root.queue_free()
 		battle_hud_root = null
@@ -1152,8 +1177,8 @@ func _setup_fighters() -> void:
 	p2.cinematic_requested.connect(_on_cinematic_requested)
 	p1.combat_event.connect(_on_combat_event)
 	p2.combat_event.connect(_on_combat_event)
-	p1.sound_requested.connect(_play_sfx)
-	p2.sound_requested.connect(_play_sfx)
+	p1.sound_requested.connect(_play_sfx.bind(p1))
+	p2.sound_requested.connect(_play_sfx.bind(p2))
 	p1.projectile_requested.connect(_on_projectile_requested)
 	p2.projectile_requested.connect(_on_projectile_requested)
 	_setup_fighter_shadows()
@@ -1563,7 +1588,7 @@ func _show_main_menu() -> void:
 	flow_state = FlowState.MAIN_MENU
 	_unload_battle_scene()
 	_hide_center_overlay()
-	_play_menu_bgm(BGM_MAIN_MENU_KEY)
+	_play_menu_music()
 	_set_menu(
 		"3D 格斗原型",
 		"网页端 1V1 格斗测试",
@@ -1577,7 +1602,7 @@ func _show_main_menu() -> void:
 func _show_mode_select() -> void:
 	flow_state = FlowState.MODE_SELECT
 	_unload_battle_scene()
-	_play_menu_bgm(BGM_MAIN_MENU_KEY)
+	_play_menu_music()
 	_set_menu(
 		"选择模式",
 		"选择 2P 由电脑控制，还是本地玩家控制。",
@@ -1630,7 +1655,7 @@ func _reset_character_select_state() -> void:
 
 func _show_character_select() -> void:
 	flow_state = FlowState.CHARACTER_SELECT
-	_play_menu_bgm(BGM_CHARACTER_SELECT_KEY)
+	_play_character_select_music()
 	_reset_character_select_state()
 	_hide_menu()
 
@@ -2015,7 +2040,7 @@ func _character_select_ready() -> bool:
 
 func _show_stage_select() -> void:
 	flow_state = FlowState.STAGE_SELECT
-	_play_menu_bgm(BGM_STAGE_SELECT_KEY)
+	_play_stage_select_music()
 	stage_cursor_index = 0
 	_hide_menu()
 
@@ -2398,7 +2423,7 @@ func _apply_character_tile_style(tile: PanelContainer, index: int) -> void:
 func _begin_match() -> void:
 	if match_load_in_progress:
 		return
-	_unlock_audio_from_input()
+	_unlock_music_from_input()
 	match_load_in_progress = true
 	flow_state = FlowState.LOADING_BATTLE
 	_show_battle_loading_screen()
@@ -2418,7 +2443,7 @@ func _begin_match() -> void:
 
 
 func _show_battle_loading_screen() -> void:
-	_play_menu_bgm(BGM_STAGE_SELECT_KEY)
+	_play_stage_select_music()
 	_set_menu(
 		"加载战斗中",
 		"正在创建战斗场景、角色模型和对战界面，请稍等。",
@@ -2477,7 +2502,6 @@ func _pause_game() -> void:
 		return
 	previous_flow_state = flow_state
 	flow_state = FlowState.PAUSED
-	_set_bgm_volume(-25.0)
 	_show_pause_menu(false)
 
 
@@ -2485,7 +2509,6 @@ func _resume_game() -> void:
 	if flow_state != FlowState.PAUSED:
 		return
 	flow_state = previous_flow_state
-	_set_bgm_volume(-10.0)
 	_hide_menu()
 
 
@@ -2862,11 +2885,44 @@ func _apply_visual_facing_angles_to_active_fighters() -> void:
 func _update_build_debug_label() -> void:
 	if build_debug_label == null:
 		return
-	build_debug_label.text = "BUILD %s | 朝向 R %.0f / L %.0f | F9/F10 调整" % [
+	var music_status := "Music n/a"
+	if music_manager != null and music_manager.player != null:
+		var stream_name := "null"
+		if music_manager.player.stream != null:
+			stream_name = music_manager.player.stream.resource_path
+			if stream_name.is_empty():
+				stream_name = music_manager.player.stream.get_class()
+		var trace_text := " > ".join(music_manager.debug_log)
+		music_status = "Music %s\nplay=%s active=%s pos=%.2f vol=%.1f key=%s unlocked=%s desired=%s retry=%d attempts=%d\nevt=%s\ntrace=%s" % [
+			stream_name,
+			str(music_manager.player.playing),
+			str(music_manager.player.has_stream_playback()),
+			music_manager.player.get_playback_position(),
+			music_manager.player.volume_db,
+			music_manager.current_track,
+			str(music_manager.audio_unlocked),
+			str(music_manager.desired_playing),
+			music_manager.retry_frames_left,
+			music_manager.start_attempts,
+			music_manager.debug_last_event,
+			trace_text,
+		]
+	build_debug_label.text = "BUILD %s | 朝向 R %.0f / L %.0f | F9/F10 调整\n%s" % [
 		BUILD_ID,
 		debug_face_right_degrees,
 		debug_face_left_degrees,
+		music_status,
 	]
+	build_debug_label.size = Vector2(860, 160)
+	build_debug_label.custom_minimum_size = Vector2(860, 160)
+	build_debug_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	build_debug_label.clip_text = false
+	build_debug_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	build_debug_label.position = Vector2(12, 12)
+	build_debug_label.z_index = 100
+	build_debug_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	build_debug_label.add_theme_font_size_override("font_size", 12)
+	build_debug_label.top_level = true
 	build_debug_label.move_to_front()
 
 
@@ -3006,7 +3062,7 @@ func _on_cinematic_requested(move: MoveDefinition, attacker: FighterController, 
 	flow_state = FlowState.CINEMATIC
 	_reset_ai_control()
 	_clear_battle_input()
-	_set_bgm_volume(-24.0)
+	_set_music_volume(-24.0)
 	_show_cinematic_overlay(move, attacker, defender)
 
 
@@ -3092,7 +3148,7 @@ func _finish_cinematic() -> void:
 	pending_cinematic.clear()
 	cinematic_frames_left = 0
 	_hide_cinematic_overlay()
-	_set_bgm_volume(-10.0)
+	_set_music_volume(-6.0)
 	flow_state = FlowState.FIGHTING
 	_clear_battle_input()
 	if move != null and attacker != null and defender != null and is_instance_valid(defender):
@@ -3560,7 +3616,10 @@ func _on_combat_event(message: String) -> void:
 	last_log = message
 
 
-func _play_sfx(sound_key: String) -> void:
+func _play_sfx(sound_key: String, source_fighter: FighterController = null) -> void:
+	if sound_key == "footstep":
+		_play_footstep_sfx(source_fighter)
+		return
 	if sfx_players.is_empty():
 		return
 	var stream := _sfx_stream(sound_key)
@@ -3573,6 +3632,54 @@ func _play_sfx(sound_key: String) -> void:
 	player.volume_db = SFX_BASE_VOLUME_DB + float(SFX_VOLUME_OFFSETS_DB.get(sound_key, 0.0))
 	player.pitch_scale = randf_range(0.96, 1.04)
 	player.play()
+
+
+func _play_footstep_sfx(source_fighter: FighterController) -> void:
+	if source_fighter == null:
+		return
+	var fighter_key := source_fighter.action_prefix
+	var player := footstep_players.get(fighter_key) as AudioStreamPlayer
+	if player == null:
+		var stream := _sfx_stream("footstep")
+		if stream == null:
+			return
+		if stream is AudioStreamWAV:
+			var wav_stream := stream as AudioStreamWAV
+			wav_stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+			wav_stream.loop_begin = 0
+			wav_stream.loop_end = -1
+		player = AudioStreamPlayer.new()
+		player.name = "Footstep_%s" % fighter_key
+		player.bus = "Master"
+		player.stream = stream
+		player.autoplay = false
+		player.pitch_scale = 1.0
+		add_child(player)
+		footstep_players[fighter_key] = player
+	player.volume_db = SFX_BASE_VOLUME_DB + float(SFX_VOLUME_OFFSETS_DB.get("footstep", 0.0))
+	var should_play := flow_state == FlowState.FIGHTING and source_fighter.state == FighterController.FighterState.WALK and source_fighter.is_on_floor() and absf(source_fighter.velocity.x) >= 0.08
+	if should_play:
+		if not player.playing:
+			player.play(0.0)
+	else:
+		if player.playing:
+			player.stop()
+
+
+func _sync_footstep_players() -> void:
+	for fighter_key in footstep_players.keys():
+		var player := footstep_players[fighter_key] as AudioStreamPlayer
+		if player == null:
+			continue
+		var fighter := p1 if fighter_key == "p1" else p2 if fighter_key == "p2" else null
+		var should_play := flow_state == FlowState.FIGHTING and fighter != null and fighter.state == FighterController.FighterState.WALK and fighter.is_on_floor() and absf(fighter.velocity.x) >= 0.08
+		player.volume_db = SFX_BASE_VOLUME_DB + float(SFX_VOLUME_OFFSETS_DB.get("footstep", 0.0))
+		if should_play:
+			if not player.playing:
+				player.play(0.0)
+		else:
+			if player.playing:
+				player.stop()
 
 
 func _sfx_stream(sound_key: String) -> AudioStream:
@@ -3597,154 +3704,39 @@ func _sfx_stream(sound_key: String) -> AudioStream:
 	return stream
 
 
-func _play_battle_bgm() -> void:
-	var volume_db := -5.0
-	if current_battle_bgm_key.is_empty():
-		var stage := _get_selected_stage()
-		current_battle_bgm_key = String(stage.get("bgm_key", ""))
-		if current_battle_bgm_key.is_empty():
-			current_battle_bgm_key = String(BGM_BATTLE_KEYS[randi() % BGM_BATTLE_KEYS.size()])
-		else:
-			volume_db = float(stage.get("bgm_volume_db", volume_db))
-	if _play_bgm(current_battle_bgm_key, volume_db):
-		return
-	push_warning("Battle BGM failed, falling back to generated BGM: %s" % current_battle_bgm_key)
-	current_battle_bgm_key = String(BGM_BATTLE_KEYS[randi() % BGM_BATTLE_KEYS.size()])
-	_play_bgm(current_battle_bgm_key, -5.0)
+func _play_menu_music() -> void:
+	if music_manager != null:
+		music_manager.play_menu()
 
 
-func _play_menu_bgm(bgm_key: String = BGM_MAIN_MENU_KEY) -> void:
-	if _play_bgm(bgm_key, -4.0):
-		return
-	push_warning("Menu BGM failed, falling back to generated BGM: %s" % bgm_key)
-	_play_bgm(BGM_MENU_FALLBACK_KEY, -4.0)
+func _play_character_select_music() -> void:
+	if music_manager != null:
+		music_manager.play_character_select()
 
 
-func _stop_battle_bgm() -> void:
-	var battle_bgm_key := current_battle_bgm_key
-	current_battle_bgm_key = ""
-	if bgm_player != null and (current_bgm_key == battle_bgm_key or current_bgm_key in BGM_BATTLE_KEYS):
-		bgm_player.stop()
-		current_bgm_key = ""
+func _play_stage_select_music() -> void:
+	if music_manager != null:
+		music_manager.play_stage_select()
 
 
-func _play_bgm(bgm_key: String, volume_db: float) -> bool:
-	if bgm_player == null:
-		return false
-	if current_bgm_key != bgm_key:
-		bgm_player.stop()
-		if BGM_PATHS.has(bgm_key):
-			bgm_player.stream = _load_looping_bgm_stream(String(BGM_PATHS[bgm_key]))
-		else:
-			bgm_player.stream = _generated_bgm(bgm_key)
-		if bgm_player.stream == null:
-			push_warning("Missing BGM stream: %s" % bgm_key)
-			current_bgm_key = ""
-			return false
-		current_bgm_key = bgm_key
-	current_bgm_volume_db = volume_db
-	bgm_player.volume_db = volume_db
-	_start_bgm_if_possible(false)
-	return true
+func _play_battle_music() -> void:
+	if music_manager != null:
+		music_manager.play_battle(-6.0)
 
 
-func _load_looping_bgm_stream(path: String) -> AudioStream:
-	var stream: AudioStream = null
-	if path.get_extension().to_lower() == "wav":
-		stream = _load_wav_stream_from_file(path)
-	if stream == null:
-		stream = ResourceLoader.load(path) as AudioStream
-	if stream is AudioStreamWAV:
-		var wav_stream := stream as AudioStreamWAV
-		wav_stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
-		wav_stream.loop_begin = 0
-		wav_stream.loop_end = -1
-	return stream
+func _stop_battle_music() -> void:
+	if music_manager != null:
+		music_manager.stop_music()
 
 
-func _load_wav_stream_from_file(path: String) -> AudioStreamWAV:
-	var file := FileAccess.open(path, FileAccess.READ)
-	if file == null:
-		return null
-	var bytes := file.get_buffer(file.get_length())
-	if bytes.size() < 44:
-		return null
-	if bytes.slice(0, 4).get_string_from_ascii() != "RIFF" or bytes.slice(8, 12).get_string_from_ascii() != "WAVE":
-		return null
-
-	var audio_format := 0
-	var channels := 0
-	var sample_rate := 0
-	var bits_per_sample := 0
-	var data_offset := -1
-	var data_size := 0
-	var offset := 12
-	while offset + 8 <= bytes.size():
-		var chunk_id := bytes.slice(offset, offset + 4).get_string_from_ascii()
-		var chunk_size := _u32_le(bytes, offset + 4)
-		var chunk_data_offset := offset + 8
-		if chunk_id == "fmt ":
-			audio_format = _u16_le(bytes, chunk_data_offset)
-			channels = _u16_le(bytes, chunk_data_offset + 2)
-			sample_rate = _u32_le(bytes, chunk_data_offset + 4)
-			bits_per_sample = _u16_le(bytes, chunk_data_offset + 14)
-		elif chunk_id == "data":
-			data_offset = chunk_data_offset
-			data_size = mini(chunk_size, bytes.size() - data_offset)
-			break
-		offset = chunk_data_offset + chunk_size + int(chunk_size % 2)
-
-	if audio_format != 1 or data_offset < 0 or data_size <= 0:
-		return null
-	var stream := AudioStreamWAV.new()
-	stream.mix_rate = sample_rate
-	stream.stereo = channels == 2
-	match bits_per_sample:
-		8:
-			stream.format = AudioStreamWAV.FORMAT_8_BITS
-		16:
-			stream.format = AudioStreamWAV.FORMAT_16_BITS
-		_:
-			return null
-	stream.data = bytes.slice(data_offset, data_offset + data_size)
-	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	stream.loop_begin = 0
-	stream.loop_end = int(data_size / maxi(1, int(channels * bits_per_sample / 8)))
-	return stream
+func _set_music_volume(volume_db: float) -> void:
+	if music_manager != null:
+		music_manager.set_music_volume(volume_db)
 
 
-func _u16_le(bytes: PackedByteArray, offset: int) -> int:
-	if offset + 1 >= bytes.size():
-		return 0
-	return int(bytes[offset]) | (int(bytes[offset + 1]) << 8)
-
-
-func _u32_le(bytes: PackedByteArray, offset: int) -> int:
-	if offset + 3 >= bytes.size():
-		return 0
-	return int(bytes[offset]) | (int(bytes[offset + 1]) << 8) | (int(bytes[offset + 2]) << 16) | (int(bytes[offset + 3]) << 24)
-
-
-func _set_bgm_volume(volume_db: float) -> void:
-	if bgm_player != null:
-		current_bgm_volume_db = volume_db
-		bgm_player.volume_db = volume_db
-
-
-func _start_bgm_if_possible(force_restart: bool) -> void:
-	if bgm_player == null or bgm_player.stream == null:
-		return
-	if force_restart:
-		bgm_player.stop()
-	if force_restart or not bgm_player.playing:
-		bgm_player.play()
-
-
-func _unlock_audio_from_input() -> void:
-	if audio_unlocked_by_input:
-		return
-	audio_unlocked_by_input = true
-	_start_bgm_if_possible(true)
+func _unlock_music_from_input() -> void:
+	if music_manager != null:
+		music_manager.unlock_audio_from_input()
 
 
 func _generated_block_sound() -> AudioStreamWAV:
@@ -3773,139 +3765,9 @@ func _generated_block_sound() -> AudioStreamWAV:
 	return stream
 
 
-func _generated_bgm(bgm_key: String) -> AudioStreamWAV:
-	if sound_stream_cache.has(bgm_key):
-		return sound_stream_cache[bgm_key] as AudioStreamWAV
-	var rate := 22050
-	var bpm := _bgm_bpm(bgm_key)
-	var beats := 16
-	var seconds := 60.0 / bpm * float(beats)
-	var frames := int(rate * seconds)
-	var data := PackedByteArray()
-	data.resize(frames * 2)
-	var bass_notes := _bgm_bass_notes(bgm_key)
-	var lead_notes := _bgm_lead_notes(bgm_key)
-	var write_index := 0
-	for i in range(frames):
-		var t := float(i) / float(rate)
-		var beat := t * bpm / 60.0
-		var step := int(floor(beat * 2.0)) % bass_notes.size()
-		var step_pos := fposmod(beat * 2.0, 1.0)
-		var bass_freq := float(bass_notes[step])
-		var lead_freq := float(lead_notes[int(floor(beat)) % lead_notes.size()])
-		var bass_env := exp(-step_pos * _bgm_bass_decay(bgm_key))
-		var bass := sin(TAU * bass_freq * t) * bass_env * _bgm_bass_gain(bgm_key)
-		var pad := (sin(TAU * bass_freq * 2.0 * t) + sin(TAU * bass_freq * 3.0 * t) * 0.45) * _bgm_pad_gain(bgm_key)
-		var lead_gate := 1.0 if fposmod(beat, 1.0) < _bgm_lead_gate(bgm_key) else 0.0
-		var lead := (sin(TAU * lead_freq * t) + 0.32 * sin(TAU * lead_freq * 2.0 * t)) * _bgm_lead_gain(bgm_key) * lead_gate
-		var kick_pos := fposmod(beat, 1.0)
-		var kick := sin(TAU * (95.0 - kick_pos * 52.0) * t) * exp(-kick_pos * 12.0) * _bgm_kick_gain(bgm_key)
-		var hat_pos := fposmod(beat * _bgm_hat_rate(bgm_key), 1.0)
-		var noise := fposmod(sin(float(i) * 12.9898) * 43758.5453, 1.0) * 2.0 - 1.0
-		var hat := noise * exp(-hat_pos * 26.0) * _bgm_hat_gain(bgm_key)
-		var value := clampf((bass + pad + lead + kick + hat) * _bgm_master_gain(bgm_key), -0.88, 0.88)
-		var sample := int(round(value * 32767.0))
-		if sample < 0:
-			sample += 65536
-		data[write_index] = sample & 0xff
-		data[write_index + 1] = (sample >> 8) & 0xff
-		write_index += 2
-	var stream := AudioStreamWAV.new()
-	stream.format = AudioStreamWAV.FORMAT_16_BITS
-	stream.mix_rate = rate
-	stream.stereo = false
-	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	stream.loop_begin = 0
-	stream.loop_end = frames
-	stream.data = data
-	sound_stream_cache[bgm_key] = stream
-	return stream
-
-
-func _bgm_bpm(bgm_key: String) -> float:
-	match bgm_key:
-		BGM_MAIN_MENU_KEY:
-			return 96.0
-		BGM_CHARACTER_SELECT_KEY:
-			return 126.0
-		BGM_STAGE_SELECT_KEY:
-			return 112.0
-		"bgm_battle_rush":
-			return 164.0
-		"bgm_battle_arcade":
-			return 142.0
-	return 152.0
-
-
-func _bgm_bass_notes(bgm_key: String) -> Array:
-	match bgm_key:
-		BGM_MAIN_MENU_KEY:
-			return [49.0, 61.74, 73.42, 61.74, 55.0, 65.41, 82.41, 65.41]
-		BGM_CHARACTER_SELECT_KEY:
-			return [65.41, 65.41, 73.42, 87.31, 65.41, 98.0, 87.31, 73.42]
-		BGM_STAGE_SELECT_KEY:
-			return [55.0, 69.3, 82.41, 69.3, 61.74, 73.42, 92.5, 73.42]
-		"bgm_battle_rush":
-			return [55.0, 65.41, 73.42, 98.0, 55.0, 73.42, 82.41, 110.0]
-		"bgm_battle_arcade":
-			return [61.74, 73.42, 92.5, 73.42, 55.0, 65.41, 82.41, 65.41]
-	return [55.0, 65.41, 73.42, 82.41, 55.0, 65.41, 98.0, 82.41]
-
-
-func _bgm_lead_notes(bgm_key: String) -> Array:
-	match bgm_key:
-		BGM_MAIN_MENU_KEY:
-			return [196.0, 246.94, 293.66, 246.94, 220.0, 261.63, 329.63, 261.63]
-		BGM_CHARACTER_SELECT_KEY:
-			return [261.63, 329.63, 392.0, 523.25, 440.0, 392.0, 329.63, 293.66]
-		BGM_STAGE_SELECT_KEY:
-			return [220.0, 277.18, 329.63, 415.3, 369.99, 329.63, 277.18, 246.94]
-		"bgm_battle_rush":
-			return [220.0, 261.63, 329.63, 392.0, 329.63, 293.66, 261.63, 196.0]
-		"bgm_battle_arcade":
-			return [246.94, 311.13, 369.99, 493.88, 415.3, 369.99, 311.13, 246.94]
-	return [220.0, 246.94, 261.63, 329.63, 293.66, 261.63, 246.94, 196.0]
-
-
-func _bgm_bass_decay(bgm_key: String) -> float:
-	return 2.2 if bgm_key in [BGM_MAIN_MENU_KEY, BGM_STAGE_SELECT_KEY] else 3.8
-
-
-func _bgm_bass_gain(bgm_key: String) -> float:
-	return 0.24 if bgm_key == BGM_MAIN_MENU_KEY else 0.22
-
-
-func _bgm_pad_gain(bgm_key: String) -> float:
-	return 0.09 if bgm_key == BGM_MAIN_MENU_KEY else (0.055 if bgm_key == BGM_STAGE_SELECT_KEY else 0.018)
-
-
-func _bgm_lead_gate(bgm_key: String) -> float:
-	return 0.76 if bgm_key in [BGM_MAIN_MENU_KEY, BGM_STAGE_SELECT_KEY] else 0.58
-
-
-func _bgm_lead_gain(bgm_key: String) -> float:
-	return 0.11 if bgm_key == BGM_MAIN_MENU_KEY else 0.09
-
-
-func _bgm_kick_gain(bgm_key: String) -> float:
-	return 0.18 if bgm_key == BGM_MAIN_MENU_KEY else 0.26
-
-
-func _bgm_hat_rate(bgm_key: String) -> float:
-	return 1.5 if bgm_key == BGM_MAIN_MENU_KEY else 2.0
-
-
-func _bgm_hat_gain(bgm_key: String) -> float:
-	return 0.035 if bgm_key == BGM_MAIN_MENU_KEY else 0.045
-
-
-func _bgm_master_gain(bgm_key: String) -> float:
-	return 0.86 if bgm_key == BGM_MAIN_MENU_KEY else 0.76
-
-
 func _input(event: InputEvent) -> void:
 	if (event is InputEventKey and event.pressed and not event.echo) or (event is InputEventMouseButton and event.pressed):
-		_unlock_audio_from_input()
+		_unlock_music_from_input()
 	if event is InputEventKey and event.pressed and not event.echo:
 		var key_event := event as InputEventKey
 		if key_event.keycode == KEY_F9:
@@ -4132,7 +3994,7 @@ func _apply_kenney_button_style(button: Button) -> void:
 		button.mouse_entered.connect(_on_button_hover_fx.bind(button, true))
 		button.mouse_exited.connect(_on_button_hover_fx.bind(button, false))
 		button.button_down.connect(_on_button_pressed_fx.bind(button))
-		button.pressed.connect(_unlock_audio_from_input)
+		button.pressed.connect(_unlock_music_from_input)
 		button.pressed.connect(_play_sfx.bind("ui_click"))
 		button.set_meta("ui_sfx_connected", true)
 

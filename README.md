@@ -184,7 +184,7 @@ data/moves/akame/*.tres
 
 音效 key 到文件路径的映射在 `scripts/fighting/fighting_game_test.gd` 的 `SOUND_PATHS`。最简单的替换方式是覆盖同名 `.ogg` 文件；如果新增文件名，需要把新路径加进 `SOUND_PATHS`，再在招式 `.tres` 的 `sfx_key` 里引用。
 
-当前菜单和战斗 BGM 是代码生成的循环音频，在 `fighting_game_test.gd` 的 `_generated_bgm()` 和 `_bgm_*()` 系列函数里。浏览器 Web 端会要求第一次点击或按键后才能播放音频，项目里已经做了输入后解锁。
+当前菜单、选人、选地图和战斗音乐由 `scripts/music_manager.gd` 统一管理，默认读取 `assets/audio/BGM/` 里的外部 WAV 文件，并在加载后设置循环。浏览器 Web 端会要求第一次点击或按键后才能播放音频，项目里已经做了输入后解锁。
 
 ## UI 和地图
 

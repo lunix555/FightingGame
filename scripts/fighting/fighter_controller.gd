@@ -107,6 +107,7 @@ var throw_invuln_frames := 0
 var combo_count := 0
 var combo_timer := 0
 var combo_damage_total := 0
+var footstep_playing := false
 
 var body_mesh: MeshInstance3D
 var state_label: Label3D
@@ -543,6 +544,7 @@ func _reset_combo() -> void:
 
 
 func _tick_movement() -> void:
+	var was_walking := state == FighterState.WALK
 	var move := input_buffer.find_move(moves)
 	if move != null:
 		if _can_start_move(move):
@@ -576,10 +578,12 @@ func _tick_movement() -> void:
 
 	move_and_slide()
 	global_position.x = clampf(global_position.x, stage_min_x, stage_max_x)
+	_sync_footstep_request()
 
 
 func _tick_attack() -> void:
 	if current_move == null:
+		footstep_playing = false
 		_enter_state(FighterState.IDLE)
 		return
 
@@ -1293,6 +1297,16 @@ func _prepare_visual_state_transition(previous_state: FighterState, next_state: 
 	elif previous_state == FighterState.CROUCH and next_state in [FighterState.IDLE, FighterState.WALK] and visual_scene_paths.has("crouch_exit"):
 		visual_state_override_key = "crouch_exit"
 		visual_state_override_frames = 10
+
+
+func _sync_footstep_request() -> void:
+	var should_play_footstep := state == FighterState.WALK and is_on_floor() and absf(velocity.x) >= 0.08
+	if should_play_footstep and not footstep_playing:
+		sound_requested.emit("footstep")
+		footstep_playing = true
+	elif not should_play_footstep and footstep_playing:
+		sound_requested.emit("footstep")
+		footstep_playing = false
 
 
 func _hit_sound_key(move: MoveDefinition) -> String:
