@@ -3,6 +3,7 @@ class_name FightingInputBuffer
 
 const BUFFER_FRAMES := 28
 const BUTTON_BUFFER_FRAMES := 5
+const CHORD_GRACE_FRAMES := 4
 const BUTTONS := ["J", "K", "U", "I", "O", "L"]
 const COMBO_JOINER := "+"
 
@@ -55,6 +56,8 @@ func find_move(moves: Array[MoveDefinition]) -> MoveDefinition:
 		if not _button_command_pressed(move.button, pressed_buttons):
 			continue
 		if move.motion.is_empty() or _motion_exists(move.motion):
+			if _should_wait_for_chord(move, sorted_moves):
+				return null
 			return move
 
 	return null
@@ -116,13 +119,54 @@ func _button_command_pressed(button_command: String, latest_pressed_buttons: Dic
 		return latest_pressed_buttons.has(button_command)
 
 	var recent_pressed := _pressed_buttons_since(BUTTON_BUFFER_FRAMES)
+	var command_pressed_this_window := false
 	for raw_button in button_command.split(COMBO_JOINER, false):
 		var button := String(raw_button).strip_edges().to_upper()
 		if button.is_empty():
 			continue
-		if not recent_pressed.has(button):
+		if latest_pressed_buttons.has(button) or recent_pressed.has(button):
+			command_pressed_this_window = true
+		if not bool(previous_buttons.get(button, false)) and not recent_pressed.has(button):
 			return false
-	return true
+	return command_pressed_this_window
+
+
+func _should_wait_for_chord(move: MoveDefinition, sorted_moves: Array) -> bool:
+	if move == null or move.button.is_empty() or move.button.contains(COMBO_JOINER):
+		return false
+	if history.is_empty() or not bool(previous_buttons.get(move.button, false)):
+		return false
+
+	var latest_frame := int(history.back()["frame"])
+	var move_button_pressed_frame := _last_button_press_frame(move.button)
+	if move_button_pressed_frame < 0 or latest_frame - move_button_pressed_frame > CHORD_GRACE_FRAMES:
+		return false
+
+	for candidate in sorted_moves:
+		var combo := candidate as MoveDefinition
+		if combo == null or combo == move or not combo.button.contains(COMBO_JOINER):
+			continue
+		if not combo.motion.is_empty():
+			continue
+		if _combo_contains_button(combo.button, move.button) and not _button_command_pressed(combo.button, _latest_pressed_buttons()):
+			return true
+	return false
+
+
+func _last_button_press_frame(button: String) -> int:
+	for index in range(history.size() - 1, -1, -1):
+		var entry := history[index]
+		var pressed := entry["pressed"] as Dictionary
+		if pressed.has(button):
+			return int(entry["frame"])
+	return -1
+
+
+func _combo_contains_button(button_command: String, wanted_button: String) -> bool:
+	for raw_button in button_command.split(COMBO_JOINER, false):
+		if String(raw_button).strip_edges().to_upper() == wanted_button:
+			return true
+	return false
 
 
 func _pressed_buttons_since(frame_window: int) -> Dictionary:

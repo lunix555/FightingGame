@@ -72,6 +72,7 @@ const KNOCKDOWN_ANIMATED_MIN_FRAMES := 96
 @export var visual_fallback_color := Color(0.8, 0.82, 0.86)
 @export var visual_animation_names := {}
 @export var move_overrides := {}
+@export var allow_throw_tech := true
 @export var animation_slots := {
 	"idle": "",
 	"walk_forward": "",
@@ -312,6 +313,9 @@ func reset_for_round(spawn_position: Vector3, round_health: int, reset_meter: bo
 	throw_lock_knockdown_frames = 0
 	throw_lock_was_crouching = false
 	hitstun_visual_key = "hit"
+	visual_state_override_key = ""
+	visual_state_override_frames = 0
+	visual_state_override_hold_last = false
 	block_shield_frames = 0
 	_hide_block_shield()
 	_reset_combo()
@@ -319,6 +323,8 @@ func reset_for_round(spawn_position: Vector3, round_health: int, reset_meter: bo
 	_enter_state(FighterState.IDLE)
 	_settle_on_floor()
 	refresh_facing_from_opponent()
+	if use_fbx_visual:
+		_set_visual("idle")
 
 
 func _settle_on_floor() -> void:
@@ -573,7 +579,7 @@ func _tick_movement() -> void:
 		velocity.y = jump_speed
 		_enter_state(FighterState.JUMP_START)
 	else:
-		velocity.x = move_toward(velocity.x, 0.0, walk_speed / 8.0)
+		velocity.x = 0.0
 		_enter_state_if_needed(FighterState.IDLE)
 
 	move_and_slide()
@@ -585,6 +591,8 @@ func _tick_attack() -> void:
 	if current_move == null:
 		footstep_playing = false
 		_enter_state(FighterState.IDLE)
+		return
+	if _try_throw_chord_override():
 		return
 
 	var phase := current_move.phase_at(state_frame)
@@ -1057,6 +1065,18 @@ func _try_attack_cancel(phase: String) -> bool:
 	return true
 
 
+func _try_throw_chord_override() -> bool:
+	if current_move == null or current_move.move_type != MoveDefinition.MoveType.NORMAL:
+		return false
+	if state_frame > FightingInputBuffer.CHORD_GRACE_FRAMES:
+		return false
+	var next_move := input_buffer.find_move(moves)
+	if next_move == null or next_move.move_type != MoveDefinition.MoveType.THROW:
+		return false
+	_start_move(next_move)
+	return true
+
+
 func _can_start_cancel_move(from_move: MoveDefinition, next_move: MoveDefinition) -> bool:
 	if next_move == null or next_move.move_type == MoveDefinition.MoveType.THROW:
 		return false
@@ -1251,6 +1271,8 @@ func _is_crouch_blocking() -> bool:
 
 
 func _is_throw_teching() -> bool:
+	if not allow_throw_tech:
+		return false
 	if input_buffer.was_button_pressed_recently("J+K", 8):
 		return true
 	if current_move == null or current_move.move_type != MoveDefinition.MoveType.THROW:
@@ -1597,17 +1619,56 @@ func _set_visual_for_move(move: MoveDefinition) -> void:
 	if not use_fbx_visual:
 		return
 
-	var move_animation_key := String(move.animation_key)
-	var key := move_animation_key if visual_scene_paths.has(move_animation_key) else String(MOVE_VISUALS.get(move_animation_key, "punch"))
-	if state == FighterState.CROUCH or last_direction in [1, 2, 3]:
-		if move_animation_key in ["anim_light_punch", "anim_heavy_punch"] and visual_scene_paths.has("crouch_punch"):
-			key = "crouch_punch"
-		elif move_animation_key in ["anim_light_kick", "anim_heavy_kick", "anim_crouch_kick"] and visual_scene_paths.has("crouch_kick"):
-			key = "crouch_kick"
+	var key := _visual_key_for_move(move)
 	if should_trigger_cinematic(move):
 		key = "punch"
 	_set_visual(key)
 	_play_visual_animation_fit_frames(move.total_frames())
+
+
+func _visual_key_for_move(move: MoveDefinition) -> String:
+	if move == null:
+		return "punch"
+
+	var move_animation_key := String(move.animation_key)
+	var key := _first_available_visual_key([move_animation_key, String(MOVE_VISUALS.get(move_animation_key, "")), "punch"])
+	if _move_uses_kick_button(move) and key == "punch":
+		key = _first_available_visual_key(["kick", "h2h_kick_01", "punch"])
+
+	if move.move_type == MoveDefinition.MoveType.NORMAL and is_airborne():
+		if _move_uses_kick_button(move):
+			return _first_available_visual_key(["h2h_kick_04", "jump_alt", "kick", key])
+		return _first_available_visual_key(["aerial_swing", "h2h_punch_02", "punch", key])
+
+	if state == FighterState.CROUCH or last_direction in [1, 2, 3] or move.attack_level == MoveDefinition.AttackLevel.LOW:
+		if _move_uses_kick_button(move):
+			return _first_available_visual_key(["crouch_kick", key])
+		if _move_uses_punch_button(move):
+			return _first_available_visual_key(["crouch_punch", key])
+
+	return key
+
+
+func _first_available_visual_key(keys: Array) -> String:
+	for raw_key in keys:
+		var key := String(raw_key)
+		if not key.is_empty() and visual_scene_paths.has(key):
+			return key
+	return "punch"
+
+
+func _move_uses_kick_button(move: MoveDefinition) -> bool:
+	if move == null:
+		return false
+	var button := String(move.button)
+	return button.contains("K") or button.contains("I")
+
+
+func _move_uses_punch_button(move: MoveDefinition) -> bool:
+	if move == null:
+		return false
+	var button := String(move.button)
+	return button.contains("J") or button.contains("U")
 
 
 func _set_visual(key: String) -> void:
@@ -1682,7 +1743,7 @@ func _ensure_visual_animation(key: String) -> String:
 			if source_animation != null:
 				animation_name = key
 				var copied_animation := source_animation.duplicate(true) as Animation
-				_retarget_visual_animation(copied_animation, source_model)
+				_retarget_visual_animation(copied_animation, source_model, key)
 				_add_visual_animation(animation_name, copied_animation)
 				visual_cache[key] = animation_name
 	source_model.free()
@@ -1715,7 +1776,7 @@ func _source_animation_name_for_key(key: String, source_player: AnimationPlayer)
 	return String(source_names[0]) if not source_names.is_empty() else ""
 
 
-func _retarget_visual_animation(animation: Animation, source_model: Node3D) -> void:
+func _retarget_visual_animation(animation: Animation, source_model: Node3D, key: String = "") -> void:
 	if animation == null or visual_model == null:
 		return
 
@@ -1765,15 +1826,19 @@ func _retarget_visual_animation(animation: Animation, source_model: Node3D) -> v
 					animation.track_set_key_value(track_index, key_index, root_rotation_correction * (key_value as Quaternion))
 		if has_hips_rest_pair and bone_path == ":Hips":
 			if track_type == Animation.TYPE_POSITION_3D:
+				var keep_in_place := _should_keep_visual_in_place(key)
+				var locked_horizontal_position := Vector3.ZERO
 				for key_index in range(animation.track_get_key_count(track_index)):
 					var key_value: Variant = animation.track_get_key_value(track_index, key_index)
 					if key_value is Vector3:
 						var source_position := key_value as Vector3
-						animation.track_set_key_value(
-							track_index,
-							key_index,
-							target_hips_rest.origin + hips_basis_correction * (source_position - source_hips_rest.origin)
-						)
+						var retargeted_position := target_hips_rest.origin + hips_basis_correction * (source_position - source_hips_rest.origin)
+						if keep_in_place:
+							if key_index == 0:
+								locked_horizontal_position = retargeted_position
+							retargeted_position.x = locked_horizontal_position.x
+							retargeted_position.z = locked_horizontal_position.z
+						animation.track_set_key_value(track_index, key_index, retargeted_position)
 			elif track_type == Animation.TYPE_ROTATION_3D:
 				var hips_rotation_correction := target_hips_rest.basis.get_rotation_quaternion() * source_hips_rest.basis.get_rotation_quaternion().inverse()
 				for key_index in range(animation.track_get_key_count(track_index)):
@@ -1781,6 +1846,10 @@ func _retarget_visual_animation(animation: Animation, source_model: Node3D) -> v
 					if key_value is Quaternion:
 						animation.track_set_key_value(track_index, key_index, hips_rotation_correction * (key_value as Quaternion))
 		animation.track_set_path(track_index, NodePath(target_skeleton_path + bone_path))
+
+
+func _should_keep_visual_in_place(key: String) -> bool:
+	return key in ["walk", "run", "dash", "dash_forward", "dash_back"]
 
 
 func _animation_bone_path_suffix(path_text: String, source_skeleton_path: String) -> String:

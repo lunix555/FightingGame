@@ -221,6 +221,7 @@ const AI_DEFAULT_ATTACK_COOLDOWN := 28
 const AI_DEFAULT_JUMP_COOLDOWN := 120
 const AI_STATE_KEYS := ["left", "right", "up", "down", "j", "k", "l", "u", "i", "o"]
 const AI_CLOSE_RANGE := 0.78
+const AI_THROW_RANGE := 1.45
 const AI_MID_RANGE := 1.35
 const AI_LONG_RANGE := 2.1
 const CHARACTER_GRID_COLUMNS := 4
@@ -293,6 +294,7 @@ const KASHANDELLA_QISHI_ANIMATION_NAMES := {
 	"h2h_kick_01": "Unreal Take",
 	"h2h_kick_02": "Unreal Take",
 	"h2h_kick_03": "Unreal Take",
+	"h2h_kick_04": "Unreal Take",
 	"h2h_punch_01": "Unreal Take",
 	"h2h_punch_02": "Unreal Take",
 	"aerial_swing": "Unreal Take",
@@ -342,6 +344,7 @@ const WELA_FASHI_ANIMATION_NAMES := {
 	"h2h_kick_01": "Unreal Take",
 	"h2h_kick_02": "Unreal Take",
 	"h2h_kick_03": "Unreal Take",
+	"h2h_kick_04": "Unreal Take",
 	"h2h_punch_01": "Unreal Take",
 	"h2h_punch_02": "Unreal Take",
 	"aerial_swing": "Unreal Take",
@@ -477,6 +480,11 @@ const CHARACTER_ROSTER := [
 		"style": "Action library fighter bound in Unreal",
 		"color": Color(0.93, 0.74, 0.45),
 		"move_folder": "res://data/moves/prototype",
+		"move_overrides": {
+			"5K": {"animation_key": "kick"},
+			"5I": {"animation_key": "kick"},
+			"236K": {"animation_key": "h2h_kick_02"},
+		},
 		"stats": {"walk_speed": 2.5, "dash_speed": 5.85, "jump_speed": 5.05, "air_control_speed": 2.35},
 		"visual": {
 			"base": "res://assets/characters/kashandella_qishi/kashandella_qishi.glb",
@@ -506,6 +514,7 @@ const CHARACTER_ROSTER := [
 				"h2h_kick_01": "res://assets/characters/kashandella_qishi/animations/kashandella_qishi_h2h_kick_01.glb",
 				"h2h_kick_02": "res://assets/characters/kashandella_qishi/animations/kashandella_qishi_h2h_kick_02.glb",
 				"h2h_kick_03": "res://assets/characters/kashandella_qishi/animations/kashandella_qishi_h2h_kick_03.glb",
+				"h2h_kick_04": "res://assets/characters/kashandella_qishi/animations/kashandella_qishi_h2h_kick_04.glb",
 				"h2h_punch_01": "res://assets/characters/kashandella_qishi/animations/kashandella_qishi_h2h_punch_01.glb",
 				"h2h_punch_02": "res://assets/characters/kashandella_qishi/animations/kashandella_qishi_h2h_punch_02.glb",
 				"aerial_swing": "res://assets/characters/kashandella_qishi/animations/kashandella_qishi_aerial_swing.glb",
@@ -546,6 +555,11 @@ const CHARACTER_ROSTER := [
 		"style": "Action library fighter bound in Unreal",
 		"color": Color(0.62, 0.76, 1.0),
 		"move_folder": "res://data/moves/prototype",
+		"move_overrides": {
+			"5K": {"animation_key": "kick"},
+			"5I": {"animation_key": "kick"},
+			"236K": {"animation_key": "hurricane_kick"},
+		},
 		"stats": {"walk_speed": 2.72, "dash_speed": 6.18, "jump_speed": 5.2, "air_control_speed": 2.58},
 		"visual": {
 			"base": "res://assets/characters/wela_fashi/wela_fashi.glb",
@@ -575,6 +589,7 @@ const CHARACTER_ROSTER := [
 				"h2h_kick_01": "res://assets/characters/wela_fashi/animations/wela_fashi_h2h_kick_01.glb",
 				"h2h_kick_02": "res://assets/characters/wela_fashi/animations/wela_fashi_h2h_kick_02.glb",
 				"h2h_kick_03": "res://assets/characters/wela_fashi/animations/wela_fashi_h2h_kick_03.glb",
+				"h2h_kick_04": "res://assets/characters/wela_fashi/animations/wela_fashi_h2h_kick_04.glb",
 				"h2h_punch_01": "res://assets/characters/wela_fashi/animations/wela_fashi_h2h_punch_01.glb",
 				"h2h_punch_02": "res://assets/characters/wela_fashi/animations/wela_fashi_h2h_punch_02.glb",
 				"aerial_swing": "res://assets/characters/wela_fashi/animations/wela_fashi_aerial_swing.glb",
@@ -915,7 +930,7 @@ var ui_font: FontFile
 var sfx_players: Array[AudioStreamPlayer] = []
 var sfx_player_index := 0
 var footstep_players := {}
-var music_manager: MusicManager
+var music_manager
 var ui_style_cache := {}
 var ui_texture_cache := {}
 var sound_stream_cache := {}
@@ -1191,6 +1206,7 @@ func _setup_fighters() -> void:
 	p2.stage_max_x = 4.6
 	p2.show_debug_proxy = false
 	p2.visual_target_height = BATTLE_VISUAL_TARGET_HEIGHT
+	p2.allow_throw_tech = false
 	_apply_character_resources_to_fighter(p2, p2_character_index)
 	_apply_character_visual_facing(p2, p2_character_index)
 	battle_root.add_child(p2)
@@ -3399,6 +3415,11 @@ func _choose_ai_attack(distance: float, p1_is_defending: bool, p1_is_retreating:
 	if p2.meter >= METER_STOCK_VALUE * 2 and distance < 1.55 and randi() % 4 == 0:
 		_queue_ai_command([6, 2, 4, 6], "k", 92)
 		last_log = "电脑抓近身机会放超必杀"
+		return
+
+	if distance < AI_THROW_RANGE and p1.is_on_floor() and randi() % (2 if p1_is_defending else 4) == 0:
+		_queue_ai_command([5], "j+k", 58)
+		last_log = "电脑主动近身投技"
 		return
 
 	if p1.state_name() == "jump" and distance > 1.05:
