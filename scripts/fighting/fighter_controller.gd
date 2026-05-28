@@ -850,6 +850,9 @@ func _try_request_projectile(projectile_move: MoveDefinition = null) -> void:
 		spawn_position = opponent.global_position + Vector3(0.0, projectile_move.projectile_height, 0.0)
 	elif projectile_move.effect_spawn_mode == "owner_ground":
 		spawn_position = global_position + Vector3(direction * offset_x, projectile_move.projectile_height, 0.0)
+	var projectile_fire_sound := _projectile_fire_sound_key(projectile_move)
+	if not projectile_fire_sound.is_empty():
+		sound_requested.emit(projectile_fire_sound)
 	projectile_requested.emit(projectile_move, self, spawn_position, direction)
 
 
@@ -1309,6 +1312,11 @@ func _sync_footstep_request() -> void:
 		footstep_playing = false
 
 
+func is_weila_fighter() -> bool:
+	var normalized_name := character_name.to_lower()
+	return normalized_name.contains("薇拉") or normalized_name.contains("weila") or normalized_name.contains("wela")
+
+
 func _hit_sound_key(move: MoveDefinition) -> String:
 	if move == null:
 		return "hit_medium"
@@ -1319,8 +1327,18 @@ func _hit_sound_key(move: MoveDefinition) -> String:
 	return "hit_medium"
 
 
+func _projectile_fire_sound_key(move: MoveDefinition) -> String:
+	if move == null or not move.projectile_enabled:
+		return ""
+	if is_weila_fighter():
+		return "weila_projectile_fire"
+	return ""
+
+
 func _move_start_sound_key(move: MoveDefinition) -> String:
 	if move == null:
+		return ""
+	if move.projectile_enabled and is_weila_fighter():
 		return ""
 	if not move.sfx_key.is_empty():
 		return move.sfx_key

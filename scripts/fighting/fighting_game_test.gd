@@ -108,6 +108,17 @@ const SOUND_PATHS := {
 	"projectile_heavy": "res://assets/audio/kenney_combat/projectile_heavy.ogg",
 	"projectile_charge": "res://assets/audio/kenney_combat/projectile_charge.ogg",
 	"projectile_impact": "res://assets/audio/kenney_combat/projectile_impact.ogg",
+	"weila_projectile_fire": [
+		"res://assets/audio/SFX_H/WeiLa_ZiDangFashe_1.wav",
+		"res://assets/audio/SFX_H/WeiLa_ZiDangFashe_2.wav",
+		"res://assets/audio/SFX_H/WeiLa_ZiDangFashe_3.wav",
+		"res://assets/audio/SFX_H/WeiLa_ZiDangFashe_4.wav",
+	],
+	"weila_projectile_hit": [
+		"res://assets/audio/SFX_H/WeiLa_ZiDanMingzhong_1.wav",
+		"res://assets/audio/SFX_H/WeiLa_ZiDanMingzhong_2.wav",
+		"res://assets/audio/SFX_H/WeiLa_ZiDanMingzhong_3.wav",
+	],
 	"ice": "res://assets/audio/kenney_combat/ice.ogg",
 	"slash": "res://assets/audio/kenney_combat/slash.ogg",
 	"throw": "res://assets/audio/kenney_combat/throw.ogg",
@@ -152,6 +163,7 @@ const SOUND_PATHS := {
 	"ui_round_fight": "res://assets/audio/SFX_U/U-04_ui_round_fight.wav",
 	"ui_ko_finish": "res://assets/audio/SFX_U/U-05_ui_ko_finish.wav",
 	"ui_fail": "res://assets/audio/SFX_U/U-07_ui_fail.wav",
+	"ui_start_game": "res://assets/audio/SFX_U/U_StartGame.wav",
 }
 const SFX_BASE_VOLUME_DB := -7.0
 const SFX_VOLUME_OFFSETS_DB := {
@@ -164,6 +176,8 @@ const SFX_VOLUME_OFFSETS_DB := {
 	"hit_light_book": 2.0,
 	"hit_medium": 2.0,
 	"hit_heavy": 2.0,
+	"weila_projectile_fire": 2.0,
+	"weila_projectile_hit": 3.0,
 	"footstep": -1.0,
 	"ui_select": 3.0,
 	"ui_confirm": 3.0,
@@ -174,6 +188,7 @@ const SFX_VOLUME_OFFSETS_DB := {
 	"U-05": 9.0,
 	"U-07": 6.0,
 	"ui_ko_finish": 9.0,
+	"ui_start_game": 3.0,
 	"ui_fail": 6.0,
 }
 const UI_FONT_PATH := "res://assets/fonts/simhei.ttf"
@@ -1002,6 +1017,7 @@ func _physics_process(_delta: float) -> void:
 			p2.input_buffer.clear_scripted_state()
 		_update_camera()
 
+
 	_sync_footstep_players()
 	_update_hud()
 
@@ -1593,10 +1609,14 @@ func _show_main_menu() -> void:
 		"3D 格斗原型",
 		"网页端 1V1 格斗测试",
 		[
-			{"text": "开始游戏", "callable": Callable(self, "_show_mode_select")},
+			{"text": "开始游戏", "callable": Callable(self, "_on_start_game_pressed"), "sfx": "ui_start_game"},
 		],
 		[]
 	)
+
+
+func _on_start_game_pressed() -> void:
+	_show_mode_select()
 
 
 func _show_mode_select() -> void:
@@ -2837,6 +2857,8 @@ func _set_menu(title: String, subtitle: String, buttons: Array, extras: Array[Co
 		button.text = String(button_data["text"])
 		button.custom_minimum_size = Vector2(0.0, 42.0)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if button_data.has("sfx"):
+			button.set_meta("click_sfx", String(button_data["sfx"]))
 		_apply_kenney_button_style(button)
 		button.pressed.connect(button_data["callable"])
 		button_parent.add_child(button)
@@ -3995,7 +4017,8 @@ func _apply_kenney_button_style(button: Button) -> void:
 		button.mouse_exited.connect(_on_button_hover_fx.bind(button, false))
 		button.button_down.connect(_on_button_pressed_fx.bind(button))
 		button.pressed.connect(_unlock_music_from_input)
-		button.pressed.connect(_play_sfx.bind("ui_click"))
+		var click_sfx := String(button.get_meta("click_sfx", "ui_click"))
+		button.pressed.connect(_play_sfx.bind(click_sfx))
 		button.set_meta("ui_sfx_connected", true)
 
 

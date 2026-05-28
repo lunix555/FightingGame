@@ -112,6 +112,12 @@ func clash_level() -> int:
 	return move.projectile_clash_level
 
 
+func _impact_sound_key() -> String:
+	if owner_fighter != null and owner_fighter.has_method("is_weila_fighter") and owner_fighter.is_weila_fighter():
+		return "weila_projectile_hit"
+	return "projectile_impact"
+
+
 func _can_touch_target() -> bool:
 	if target_fighter == null or not is_instance_valid(target_fighter):
 		return false
@@ -135,7 +141,7 @@ func _touches_ground() -> bool:
 
 func _resolve_target_contact() -> void:
 	if owner_fighter != null and is_instance_valid(owner_fighter):
-		owner_fighter.sound_requested.emit("projectile_impact")
+		owner_fighter.sound_requested.emit(_impact_sound_key())
 	if target_fighter.can_block_move(move, owner_fighter):
 		var chip := target_fighter.receive_block(move, owner_fighter)
 		owner_fighter._gain_meter(move.meter_gain_on_block)
