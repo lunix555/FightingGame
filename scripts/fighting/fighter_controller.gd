@@ -1303,7 +1303,7 @@ func _prepare_visual_state_transition(previous_state: FighterState, next_state: 
 
 
 func _sync_footstep_request() -> void:
-	var should_play_footstep := state == FighterState.WALK and is_on_floor() and absf(velocity.x) >= 0.08
+	var should_play_footstep := is_in_control() and is_on_floor() and absf(velocity.x) >= 0.08
 	if should_play_footstep and not footstep_playing:
 		sound_requested.emit("footstep")
 		footstep_playing = true

@@ -5,12 +5,16 @@ const MENU_MUSIC := "menu"
 const CHARACTER_SELECT_MUSIC := "character_select"
 const STAGE_SELECT_MUSIC := "stage_select"
 const BATTLE_MUSIC := "battle"
+const MAGICAL_ROAD_MUSIC := "battle_magical_road"
+const SCIFI_LAB_MUSIC := "battle_scifi_lab"
 
 const MUSIC_PATHS := {
 	MENU_MUSIC: "res://assets/audio/BGM/BGM_Main.wav",
 	CHARACTER_SELECT_MUSIC: "res://assets/audio/BGM/BGM_Main.wav",
 	STAGE_SELECT_MUSIC: "res://assets/audio/BGM/BGM_Main.wav",
 	BATTLE_MUSIC: "res://assets/audio/BGM/BGM_Neon Street.wav",
+	MAGICAL_ROAD_MUSIC: "res://assets/audio/BGM/BGM_Magical Road.wav",
+	SCIFI_LAB_MUSIC: "res://assets/audio/BGM/BGM_Sci-Fi Lab.wav",
 }
 
 const DEFAULT_VOLUME_DB := -8.0
@@ -20,6 +24,9 @@ const MUSIC_BUS_NAME := "Music"
 const INTRO_RESTORE_SECONDS := 1.0
 const INTRO_VOLUME_OFFSET_DB := -8.0
 const INTRO_LOWPASS_CUTOFF_HZ := 900.0
+const KO_LOWPASS_CUTOFF_HZ := 1100.0
+const KO_LOWPASS_FADE_SECONDS := 0.35
+const PAUSE_VOLUME_OFFSET_DB := -3.0
 const FULL_RANGE_CUTOFF_HZ := 20500.0
 
 var player: AudioStreamPlayer
@@ -35,9 +42,13 @@ var desired_playing := false
 var playback_confirmed := false
 var crossfade_tween: Tween
 var intro_restore_tween: Tween
+var battle_lowpass_tween: Tween
+var pause_effect_tween: Tween
 var music_bus_index := -1
 var music_lowpass_effect: AudioEffectLowPassFilter
 var intro_effect_active := true
+var battle_lowpass_active := false
+var pause_effect_active := false
 var debug_last_event := "init"
 var debug_log: Array[String] = []
 
@@ -63,8 +74,8 @@ func play_stage_select() -> void:
 	play_track(STAGE_SELECT_MUSIC, -7.0)
 
 
-func play_battle(volume_db: float = -6.0) -> void:
-	play_track(BATTLE_MUSIC, volume_db)
+func play_battle(volume_db: float = -6.0, stage_name: String = "") -> void:
+	play_track(_battle_track_for_stage(stage_name), volume_db)
 
 
 func stop_music() -> void:
@@ -73,6 +84,10 @@ func stop_music() -> void:
 	retry_frames_left = 0
 	_cancel_crossfade()
 	_cancel_intro_restore()
+	_cancel_battle_lowpass_tween()
+	_cancel_pause_effect_tween()
+	battle_lowpass_active = false
+	pause_effect_active = false
 	if fade_out_player != null:
 		fade_out_player.stop()
 	if player == null:
@@ -90,7 +105,6 @@ func set_music_volume(volume_db: float) -> void:
 
 
 func unlock_audio_from_input() -> void:
-	_start_intro_restore()
 	if audio_unlocked:
 		if desired_playing and not playback_confirmed and player != null and player.stream != null and not _is_playback_active():
 			_start_playback(false)
@@ -113,8 +127,8 @@ func play_track(track_key: String, volume_db: float = DEFAULT_VOLUME_DB) -> void
 		_mark_debug("missing:%s" % track_key)
 		push_warning("Music track missing: %s" % track_key)
 		return
-	var should_switch_stream := current_path != next_path or (track_key == BATTLE_MUSIC and current_track != BATTLE_MUSIC)
-	var should_crossfade := should_switch_stream and track_key == BATTLE_MUSIC and _is_playback_active()
+	var should_switch_stream := current_path != next_path or (_is_battle_track(track_key) and not _is_battle_track(current_track))
+	var should_crossfade := should_switch_stream and _is_battle_track(track_key) and _is_playback_active()
 	if should_switch_stream:
 		var stream := _load_music_stream(track_key)
 		if stream == null:
@@ -161,7 +175,12 @@ func _setup_music_bus() -> void:
 
 
 func _effective_player_volume(volume_db: float) -> float:
-	return volume_db + INTRO_VOLUME_OFFSET_DB if intro_effect_active else volume_db
+	var effective_volume := volume_db
+	if intro_effect_active:
+		effective_volume += INTRO_VOLUME_OFFSET_DB
+	if pause_effect_active:
+		effective_volume += PAUSE_VOLUME_OFFSET_DB
+	return effective_volume
 
 
 func _setup_player() -> void:
@@ -199,7 +218,7 @@ func _begin_crossfade(new_stream: AudioStream, volume_db: float) -> void:
 	retry_frames_left = 0
 	crossfade_tween = create_tween()
 	crossfade_tween.set_parallel(true)
-	crossfade_tween.tween_property(player, "volume_db", volume_db, CROSSFADE_SECONDS)
+	crossfade_tween.tween_property(player, "volume_db", _effective_player_volume(volume_db), CROSSFADE_SECONDS)
 	crossfade_tween.tween_property(fade_out_player, "volume_db", CROSSFADE_SILENCE_DB, CROSSFADE_SECONDS)
 	crossfade_tween.finished.connect(_finish_crossfade)
 	_mark_debug("crossfade")
@@ -220,6 +239,71 @@ func _cancel_crossfade() -> void:
 		crossfade_tween = null
 
 
+func restore_intro_effect() -> void:
+	_start_intro_restore()
+
+
+func set_battle_lowpass(enabled: bool) -> void:
+	battle_lowpass_active = enabled
+	_update_music_filter(KO_LOWPASS_FADE_SECONDS, "battle_lowpass:%s" % str(enabled), true)
+
+
+func set_pause_effect(enabled: bool) -> void:
+	pause_effect_active = enabled
+	_update_music_filter(KO_LOWPASS_FADE_SECONDS, "pause_effect:%s" % str(enabled), false)
+
+
+func _update_music_filter(duration: float, debug_event: String, use_battle_tween_slot: bool) -> void:
+	_setup_music_bus()
+	if music_lowpass_effect == null:
+		return
+	_cancel_battle_lowpass_tween()
+	_cancel_pause_effect_tween()
+	var target_cutoff := _target_lowpass_cutoff()
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(music_lowpass_effect, "cutoff_hz", target_cutoff, duration)
+	if player != null and crossfade_tween == null:
+		tween.tween_property(player, "volume_db", _effective_player_volume(target_volume_db), duration)
+	if fade_out_player != null and fade_out_player.playing:
+		tween.tween_property(fade_out_player, "volume_db", CROSSFADE_SILENCE_DB, duration)
+	if use_battle_tween_slot:
+		battle_lowpass_tween = tween
+		battle_lowpass_tween.finished.connect(_finish_battle_lowpass_tween)
+	else:
+		pause_effect_tween = tween
+		pause_effect_tween.finished.connect(_finish_pause_effect_tween)
+	_mark_debug(debug_event)
+
+
+func _target_lowpass_cutoff() -> float:
+	if intro_effect_active:
+		return INTRO_LOWPASS_CUTOFF_HZ
+	if battle_lowpass_active or pause_effect_active:
+		return KO_LOWPASS_CUTOFF_HZ
+	return FULL_RANGE_CUTOFF_HZ
+
+
+func _finish_battle_lowpass_tween() -> void:
+	battle_lowpass_tween = null
+
+
+func _finish_pause_effect_tween() -> void:
+	pause_effect_tween = null
+
+
+func _cancel_battle_lowpass_tween() -> void:
+	if battle_lowpass_tween != null:
+		battle_lowpass_tween.kill()
+		battle_lowpass_tween = null
+
+
+func _cancel_pause_effect_tween() -> void:
+	if pause_effect_tween != null:
+		pause_effect_tween.kill()
+		pause_effect_tween = null
+
+
 func _start_intro_restore() -> void:
 	if not intro_effect_active:
 		return
@@ -235,19 +319,19 @@ func _retarget_intro_restore() -> void:
 	intro_restore_tween = create_tween()
 	intro_restore_tween.set_parallel(true)
 	if player != null:
-		intro_restore_tween.tween_property(player, "volume_db", target_volume_db, INTRO_RESTORE_SECONDS)
+		intro_restore_tween.tween_property(player, "volume_db", _effective_player_volume(target_volume_db), INTRO_RESTORE_SECONDS)
 	if fade_out_player != null and fade_out_player.playing:
 		intro_restore_tween.tween_property(fade_out_player, "volume_db", CROSSFADE_SILENCE_DB, INTRO_RESTORE_SECONDS)
 	if music_lowpass_effect != null:
-		intro_restore_tween.tween_property(music_lowpass_effect, "cutoff_hz", FULL_RANGE_CUTOFF_HZ, INTRO_RESTORE_SECONDS)
+		intro_restore_tween.tween_property(music_lowpass_effect, "cutoff_hz", _target_lowpass_cutoff(), INTRO_RESTORE_SECONDS)
 	intro_restore_tween.finished.connect(_finish_intro_restore)
 
 
 func _finish_intro_restore() -> void:
 	if music_lowpass_effect != null:
-		music_lowpass_effect.cutoff_hz = FULL_RANGE_CUTOFF_HZ
+		music_lowpass_effect.cutoff_hz = _target_lowpass_cutoff()
 	if player != null and crossfade_tween == null:
-		player.volume_db = target_volume_db
+		player.volume_db = _effective_player_volume(target_volume_db)
 	intro_restore_tween = null
 	_mark_debug("intro_full")
 
@@ -256,6 +340,20 @@ func _cancel_intro_restore() -> void:
 	if intro_restore_tween != null:
 		intro_restore_tween.kill()
 		intro_restore_tween = null
+
+
+func _battle_track_for_stage(stage_name: String) -> String:
+	match stage_name:
+		"Magical Road":
+			return MAGICAL_ROAD_MUSIC
+		"Sci-Fi Lab":
+			return SCIFI_LAB_MUSIC
+		_:
+			return BATTLE_MUSIC
+
+
+func _is_battle_track(track_key: String) -> bool:
+	return track_key == BATTLE_MUSIC or track_key == MAGICAL_ROAD_MUSIC or track_key == SCIFI_LAB_MUSIC
 
 
 func _music_path(track_key: String) -> String:

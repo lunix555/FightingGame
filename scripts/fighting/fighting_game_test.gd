@@ -92,8 +92,18 @@ const SOUND_PATHS := {
 		"res://assets/audio/SFX_M/M-03a_jump_generic_06.wav",
 	],
 	"footstep": "res://assets/audio/SFX_M/0019 - VFAFS Boots Concrete - Audio - miss.wav",
-	"block": "res://assets/audio/kenney_impact/block.ogg",
-	"block_success": "res://assets/audio/kenney_impact/block.ogg",
+	"block": [
+		"res://assets/audio/SFX_M/M-Gedang_1.wav",
+		"res://assets/audio/SFX_M/M-Gedang_2.wav",
+		"res://assets/audio/SFX_M/M-Gedang_3.wav",
+		"res://assets/audio/SFX_M/M-Gedang_4.wav",
+	],
+	"block_success": [
+		"res://assets/audio/SFX_M/M-Gedang_1.wav",
+		"res://assets/audio/SFX_M/M-Gedang_2.wav",
+		"res://assets/audio/SFX_M/M-Gedang_3.wav",
+		"res://assets/audio/SFX_M/M-Gedang_4.wav",
+	],
 	"jump": [
 		"res://assets/audio/SFX_M/M-03a_jump_generic_01.wav",
 		"res://assets/audio/SFX_M/M-03a_jump_generic_02.wav",
@@ -176,9 +186,11 @@ const SFX_VOLUME_OFFSETS_DB := {
 	"hit_light_book": 2.0,
 	"hit_medium": 2.0,
 	"hit_heavy": 2.0,
+	"block": 3.0,
+	"block_success": 3.0,
 	"weila_projectile_fire": 2.0,
 	"weila_projectile_hit": 3.0,
-	"footstep": -1.0,
+	"footstep": 3.0,
 	"ui_select": 3.0,
 	"ui_confirm": 3.0,
 	"ui_click": 3.0,
@@ -192,7 +204,6 @@ const SFX_VOLUME_OFFSETS_DB := {
 	"ui_fail": 6.0,
 }
 const UI_FONT_PATH := "res://assets/fonts/simhei.ttf"
-const GENERATED_BLOCK_SOUND_KEY := "block_success"
 const FIGHTER_GROUND_Y := -0.42
 const P1_SPAWN := Vector3(-1.35, FIGHTER_GROUND_Y, 0.0)
 const P2_SPAWN := Vector3(1.35, FIGHTER_GROUND_Y, 0.0)
@@ -1068,6 +1079,7 @@ func _load_battle_scene() -> void:
 
 func _unload_battle_scene() -> void:
 	_hide_center_overlay()
+	_set_battle_music_pause_effect(false)
 	var had_battle := battle_root != null or battle_hud_root != null
 	if had_battle:
 		_stop_battle_music()
@@ -1616,6 +1628,8 @@ func _show_main_menu() -> void:
 
 
 func _on_start_game_pressed() -> void:
+	if music_manager != null:
+		music_manager.restore_intro_effect()
 	_show_mode_select()
 
 
@@ -2443,6 +2457,7 @@ func _apply_character_tile_style(tile: PanelContainer, index: int) -> void:
 func _begin_match() -> void:
 	if match_load_in_progress:
 		return
+	_set_battle_music_pause_effect(false)
 	_unlock_music_from_input()
 	match_load_in_progress = true
 	flow_state = FlowState.LOADING_BATTLE
@@ -2491,6 +2506,8 @@ func _make_loading_hint() -> Control:
 
 
 func _start_round() -> void:
+	_set_battle_music_pause_effect(false)
+	_set_battle_music_lowpass(false)
 	round_seconds = round_time_setting
 	round_frame = 0
 	round_winner = 0
@@ -2511,6 +2528,7 @@ func _start_round() -> void:
 
 
 func _start_fighting() -> void:
+	_set_battle_music_lowpass(false)
 	flow_state = FlowState.FIGHTING
 	round_frame = 0
 	last_log = "开战"
@@ -2522,6 +2540,7 @@ func _pause_game() -> void:
 		return
 	previous_flow_state = flow_state
 	flow_state = FlowState.PAUSED
+	_set_battle_music_pause_effect(true)
 	_show_pause_menu(false)
 
 
@@ -2529,6 +2548,7 @@ func _resume_game() -> void:
 	if flow_state != FlowState.PAUSED:
 		return
 	flow_state = previous_flow_state
+	_set_battle_music_pause_effect(false)
 	_hide_menu()
 
 
@@ -2761,6 +2781,8 @@ func _set_fade_alpha(alpha: float) -> void:
 
 
 func _show_match_over() -> void:
+	_set_battle_music_pause_effect(false)
+	_set_battle_music_lowpass(false)
 	flow_state = FlowState.MATCH_OVER
 	var message := "平局"
 	if p1_round_wins >= wins_needed:
@@ -2999,6 +3021,7 @@ func _finish_round(winner: int, message: String, is_ko: bool) -> void:
 		p2_round_wins += 1
 	last_log = message
 	flow_state = FlowState.ROUND_OVER
+	_set_battle_music_lowpass(is_ko)
 	round_pause_frames = ROUND_RESULT_FRAMES
 	if is_ko:
 		round_pause_frames += KO_SLOWMO_FRAMES
@@ -3669,7 +3692,7 @@ func _play_footstep_sfx(source_fighter: FighterController) -> void:
 			var wav_stream := stream as AudioStreamWAV
 			wav_stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 			wav_stream.loop_begin = 0
-			wav_stream.loop_end = -1
+			wav_stream.loop_end = int(round(wav_stream.get_length() * float(wav_stream.mix_rate)))
 		player = AudioStreamPlayer.new()
 		player.name = "Footstep_%s" % fighter_key
 		player.bus = "Master"
@@ -3679,7 +3702,7 @@ func _play_footstep_sfx(source_fighter: FighterController) -> void:
 		add_child(player)
 		footstep_players[fighter_key] = player
 	player.volume_db = SFX_BASE_VOLUME_DB + float(SFX_VOLUME_OFFSETS_DB.get("footstep", 0.0))
-	var should_play := flow_state == FlowState.FIGHTING and source_fighter.state == FighterController.FighterState.WALK and source_fighter.is_on_floor() and absf(source_fighter.velocity.x) >= 0.08
+	var should_play := flow_state == FlowState.FIGHTING and source_fighter.is_in_control() and source_fighter.is_on_floor() and absf(source_fighter.velocity.x) >= 0.08
 	if should_play:
 		if not player.playing:
 			player.play(0.0)
@@ -3694,7 +3717,7 @@ func _sync_footstep_players() -> void:
 		if player == null:
 			continue
 		var fighter := p1 if fighter_key == "p1" else p2 if fighter_key == "p2" else null
-		var should_play := flow_state == FlowState.FIGHTING and fighter != null and fighter.state == FighterController.FighterState.WALK and fighter.is_on_floor() and absf(fighter.velocity.x) >= 0.08
+		var should_play := flow_state == FlowState.FIGHTING and fighter != null and fighter.is_in_control() and fighter.is_on_floor() and absf(fighter.velocity.x) >= 0.08
 		player.volume_db = SFX_BASE_VOLUME_DB + float(SFX_VOLUME_OFFSETS_DB.get("footstep", 0.0))
 		if should_play:
 			if not player.playing:
@@ -3720,8 +3743,6 @@ func _sfx_stream(sound_key: String) -> AudioStream:
 	var stream: AudioStream = null
 	if SOUND_PATHS.has(sound_key):
 		stream = ResourceLoader.load(cache_key) as AudioStream
-	elif sound_key == GENERATED_BLOCK_SOUND_KEY:
-		stream = _generated_block_sound()
 	sound_stream_cache[cache_key] = stream
 	return stream
 
@@ -3743,7 +3764,17 @@ func _play_stage_select_music() -> void:
 
 func _play_battle_music() -> void:
 	if music_manager != null:
-		music_manager.play_battle(-6.0)
+		music_manager.play_battle(-6.0, selected_stage_name)
+
+
+func _set_battle_music_lowpass(enabled: bool) -> void:
+	if music_manager != null:
+		music_manager.set_battle_lowpass(enabled)
+
+
+func _set_battle_music_pause_effect(enabled: bool) -> void:
+	if music_manager != null:
+		music_manager.set_pause_effect(enabled)
 
 
 func _stop_battle_music() -> void:
@@ -3759,32 +3790,6 @@ func _set_music_volume(volume_db: float) -> void:
 func _unlock_music_from_input() -> void:
 	if music_manager != null:
 		music_manager.unlock_audio_from_input()
-
-
-func _generated_block_sound() -> AudioStreamWAV:
-	var rate := 22050
-	var frames := int(rate * 0.24)
-	var data := PackedByteArray()
-	data.resize(frames * 2)
-	var write_index := 0
-	for i in range(frames):
-		var t := float(i) / float(rate)
-		var env := exp(-t * 16.0)
-		var ring := sin(TAU * 760.0 * t) * 0.58 + sin(TAU * 1180.0 * t) * 0.26
-		var snap := sin(TAU * 2100.0 * t) * exp(-t * 42.0) * 0.22
-		var value := clampf((ring + snap) * env, -0.95, 0.95)
-		var sample := int(round(value * 32767.0))
-		if sample < 0:
-			sample += 65536
-		data[write_index] = sample & 0xff
-		data[write_index + 1] = (sample >> 8) & 0xff
-		write_index += 2
-	var stream := AudioStreamWAV.new()
-	stream.format = AudioStreamWAV.FORMAT_16_BITS
-	stream.mix_rate = rate
-	stream.stereo = false
-	stream.data = data
-	return stream
 
 
 func _input(event: InputEvent) -> void:
