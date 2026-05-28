@@ -38,7 +38,7 @@ const CHARACTERS := [
 	},
 ]
 
-const KEYS := ["idle", "walk", "punch", "kick", "crouch", "hit", "crouch_hit", "knockdown", "crouch_knockdown", "getup"]
+const KEYS := ["idle", "walk", "punch", "kick", "crouch", "hit", "crouch_hit", "knockdown", "crouch_knockdown", "getup", "victory_1", "victory_2"]
 
 
 func _initialize() -> void:
@@ -153,6 +153,8 @@ func _animations_for(character: Dictionary) -> Dictionary:
 		"knockdown": prefix + "knockdown.glb",
 		"crouch_knockdown": prefix + "crouch_knockdown.glb",
 		"getup": prefix + "getup.glb",
+		"victory_1": prefix + "victory_1.glb",
+		"victory_2": prefix + "victory_2.glb",
 	}
 
 

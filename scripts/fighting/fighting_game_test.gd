@@ -159,6 +159,7 @@ const ROUND_FIGHT_FRAMES := 55
 const ROUND_RESULT_FRAMES := 150
 const ROUND_FADE_FRAMES := 45
 const ROUND_LOSER_KNOCKDOWN_FRAMES := 180
+const ROUND_VICTORY_MIN_FRAMES := 180
 const KO_SLOWMO_FRAMES := 78
 const KO_SLOWMO_TICK_INTERVAL := 4
 const AI_DEFAULT_ATTACK_COOLDOWN := 28
@@ -234,6 +235,8 @@ const KASHANDELLA_QISHI_ANIMATION_NAMES := {
 	"dodge": "Unreal Take",
 	"jump_alt": "Unreal Take",
 	"turn": "Unreal Take",
+	"victory_1": "Unreal Take",
+	"victory_2": "Unreal Take",
 }
 const WELA_FASHI_ANIMATION_NAMES := {
 	"idle": "Unreal Take",
@@ -258,6 +261,8 @@ const WELA_FASHI_ANIMATION_NAMES := {
 	"dodge": "Unreal Take",
 	"jump_alt": "Unreal Take",
 	"turn": "Unreal Take",
+	"victory_1": "Unreal Take",
+	"victory_2": "Unreal Take",
 }
 const BUILD_ID := "20260527-common-action-retarget"
 const MENU_PANEL_WIDTH := 760.0
@@ -400,6 +405,8 @@ const CHARACTER_ROSTER := [
 				"dodge": "res://assets/characters/kashandella_qishi/animations/kashandella_qishi_dodge.glb",
 				"jump_alt": "res://assets/characters/kashandella_qishi/animations/kashandella_qishi_jump_alt.glb",
 				"turn": "res://assets/characters/kashandella_qishi/animations/kashandella_qishi_turn.glb",
+				"victory_1": "res://assets/characters/kashandella_qishi/animations/kashandella_qishi_victory_1.glb",
+				"victory_2": "res://assets/characters/kashandella_qishi/animations/kashandella_qishi_victory_2.glb",
 			},
 			"animation_names": KASHANDELLA_QISHI_ANIMATION_NAMES,
 			"textures": {
@@ -445,6 +452,8 @@ const CHARACTER_ROSTER := [
 				"dodge": "res://assets/characters/wela_fashi/animations/wela_fashi_dodge.glb",
 				"jump_alt": "res://assets/characters/wela_fashi/animations/wela_fashi_jump_alt.glb",
 				"turn": "res://assets/characters/wela_fashi/animations/wela_fashi_turn.glb",
+				"victory_1": "res://assets/characters/wela_fashi/animations/wela_fashi_victory_1.glb",
+				"victory_2": "res://assets/characters/wela_fashi/animations/wela_fashi_victory_2.glb",
 			},
 			"animation_names": WELA_FASHI_ANIMATION_NAMES,
 			"textures": {
@@ -2571,16 +2580,30 @@ func _update_round_over_overlay() -> void:
 		_set_fade_alpha(0.0)
 
 
-func _apply_round_end_knockdown(winner: int, is_ko: bool) -> void:
-	if not is_ko:
-		return
+func _apply_round_end_poses(winner: int, is_ko: bool) -> int:
+	var pose_frames := 0
 	if winner == 1:
-		p2.force_knockdown(ROUND_LOSER_KNOCKDOWN_FRAMES)
+		pose_frames = maxi(pose_frames, _play_round_victory(p1))
+		pose_frames = maxi(pose_frames, p2.force_round_end_knockdown(ROUND_LOSER_KNOCKDOWN_FRAMES))
 	elif winner == 2:
-		p1.force_knockdown(ROUND_LOSER_KNOCKDOWN_FRAMES)
-	else:
-		p1.force_knockdown(ROUND_LOSER_KNOCKDOWN_FRAMES)
-		p2.force_knockdown(ROUND_LOSER_KNOCKDOWN_FRAMES)
+		pose_frames = maxi(pose_frames, _play_round_victory(p2))
+		pose_frames = maxi(pose_frames, p1.force_round_end_knockdown(ROUND_LOSER_KNOCKDOWN_FRAMES))
+	elif is_ko:
+		pose_frames = maxi(pose_frames, p1.force_round_end_knockdown(ROUND_LOSER_KNOCKDOWN_FRAMES))
+		pose_frames = maxi(pose_frames, p2.force_round_end_knockdown(ROUND_LOSER_KNOCKDOWN_FRAMES))
+	return maxi(pose_frames, ROUND_VICTORY_MIN_FRAMES)
+
+
+func _play_round_victory(fighter: FighterController) -> int:
+	if fighter == null:
+		return 0
+	var victory_keys: Array[String] = []
+	for key in ["victory_1", "victory_2"]:
+		if fighter.has_visual_scene_key(key):
+			victory_keys.append(key)
+	if victory_keys.is_empty():
+		return fighter.play_round_victory("idle")
+	return fighter.play_round_victory(victory_keys[randi() % victory_keys.size()])
 
 
 func _show_center_message(text: String, color: Color) -> void:
@@ -2820,21 +2843,26 @@ func _finish_round(winner: int, message: String, is_ko: bool) -> void:
 	p2.input_buffer.clear_scripted_state()
 	_reset_ai_control()
 	_clear_projectiles()
-	_apply_round_end_knockdown(winner, is_ko)
+	var pose_frames := _apply_round_end_poses(winner, is_ko)
+	round_pause_frames = maxi(round_pause_frames, pose_frames + ROUND_FADE_FRAMES)
 	_show_center_message("K.O." if is_ko else "时间到", Color(1.0, 0.24, 0.16))
 	_set_fade_alpha(0.0)
 
 
 func _update_ko_slowmo() -> void:
-	if ko_slowmo_frames <= 0 or p1 == null or p2 == null:
+	if p1 == null or p2 == null:
 		return
-	ko_slowmo_frames -= 1
-	ko_slowmo_tick_counter += 1
-	if ko_slowmo_tick_counter < KO_SLOWMO_TICK_INTERVAL:
+	var should_tick := true
+	if ko_slowmo_frames > 0:
+		ko_slowmo_frames -= 1
+		ko_slowmo_tick_counter += 1
+		should_tick = ko_slowmo_tick_counter >= KO_SLOWMO_TICK_INTERVAL
+		if should_tick:
+			ko_slowmo_tick_counter = 0
+	if not should_tick:
 		return
-	ko_slowmo_tick_counter = 0
-	p1.tick()
-	p2.tick()
+	p1.tick_round_over_visual()
+	p2.tick_round_over_visual()
 	_update_fighter_shadows()
 	_update_camera()
 

@@ -116,8 +116,11 @@ var visual_key := ""
 var visual_cache := {}
 var visual_state_override_key := ""
 var visual_state_override_frames := 0
+var visual_state_override_hold_last := false
 var hitstun_visual_key := "hit"
 var knockdown_visual_key := "knockdown"
+var round_end_knockdown_hold := false
+var suppress_getup_visual := false
 var attack_effect: MeshInstance3D
 var attack_effect_material_cache := {}
 var impact_flash: MeshInstance3D
@@ -243,6 +246,7 @@ func apply_character_resources(move_folder: String, base_scene: String, scene_pa
 	visual_key = ""
 	visual_state_override_key = ""
 	visual_state_override_frames = 0
+	visual_state_override_hold_last = false
 	hitstun_visual_key = "hit"
 	if visual_model != null:
 		visual_model.queue_free()
@@ -281,6 +285,8 @@ func reset_for_round(spawn_position: Vector3, round_health: int, reset_meter: bo
 	current_move = null
 	wakeup_invuln_frames = 0
 	throw_invuln_frames = 0
+	round_end_knockdown_hold = false
+	suppress_getup_visual = false
 	hitstun_visual_key = "hit"
 	block_shield_frames = 0
 	_hide_block_shield()
@@ -305,6 +311,78 @@ func _settle_on_floor() -> void:
 func force_knockdown(frames: int) -> void:
 	_enter_knockdown(frames)
 	_update_visual_state()
+	_update_debug_visuals()
+
+
+func force_round_end_knockdown(frames: int) -> int:
+	_enter_knockdown(frames)
+	round_end_knockdown_hold = true
+	suppress_getup_visual = true
+	_update_visual_state()
+	_update_debug_visuals()
+	return maxi(KNOCKDOWN_FALL_VISUAL_FRAMES, visual_animation_duration_frames(knockdown_visual_key))
+
+
+func play_round_victory(key: String, fallback_key: String = "idle") -> int:
+	var chosen_key := key
+	if not _has_visual_scene(chosen_key):
+		chosen_key = fallback_key
+	if not _has_visual_scene(chosen_key):
+		chosen_key = "idle"
+
+	velocity = Vector3.ZERO
+	current_move = null
+	input_buffer.clear()
+	if hitbox_area != null:
+		hitbox_area.monitoring = false
+		hitbox_area.visible = false
+	_hide_attack_effect()
+	_enter_state(FighterState.IDLE)
+
+	var duration_frames := maxi(90, visual_animation_duration_frames(chosen_key))
+	visual_state_override_key = chosen_key
+	visual_state_override_frames = duration_frames + 120
+	visual_state_override_hold_last = true
+	_set_visual(chosen_key)
+	_play_visual_animation_fit_frames(duration_frames)
+	_update_debug_visuals()
+	return duration_frames
+
+
+func visual_animation_duration_frames(key: String) -> int:
+	if not use_fbx_visual:
+		return 0
+	if not _ensure_base_visual():
+		return 0
+	var animation_name := _ensure_visual_animation(key)
+	if animation_name.is_empty() or visual_animation_player == null:
+		return 0
+	var animation := visual_animation_player.get_animation(animation_name)
+	if animation == null:
+		return 0
+	return int(ceil(animation.length * 60.0))
+
+
+func has_visual_scene_key(key: String) -> bool:
+	return _has_visual_scene(key)
+
+
+func tick_round_over_visual() -> void:
+	game_frame += 1
+	_tick_combat_timers()
+	_tick_impact_flash()
+	_tick_block_shield()
+	if state == FighterState.KNOCKDOWN:
+		_tick_knockdown()
+	else:
+		velocity = Vector3.ZERO
+		input_buffer.clear()
+		current_move = null
+		if hitbox_area != null:
+			hitbox_area.monitoring = false
+			hitbox_area.visible = false
+	_update_visual_state()
+	state_frame += 1
 	_update_debug_visuals()
 
 
@@ -592,6 +670,10 @@ func _tick_knockdown() -> void:
 	global_position.x = clampf(global_position.x, stage_min_x, stage_max_x)
 	_apply_knockdown_visual_pose()
 	if state_frame >= -1 and health > 0 and is_on_floor():
+		if round_end_knockdown_hold:
+			state_frame = -1
+			_hold_visual_animation_last_frame()
+			return
 		_enter_state(FighterState.IDLE)
 		wakeup_invuln_frames = WAKEUP_INVULN_FRAMES
 		throw_invuln_frames = THROW_INVULN_FRAMES
@@ -1099,6 +1181,7 @@ func _enter_state(next_state: FighterState) -> void:
 func _prepare_visual_state_transition(previous_state: FighterState, next_state: FighterState) -> void:
 	visual_state_override_key = ""
 	visual_state_override_frames = 0
+	visual_state_override_hold_last = false
 	if previous_state != FighterState.CROUCH and next_state == FighterState.CROUCH and visual_scene_paths.has("crouch_enter"):
 		visual_state_override_key = "crouch_enter"
 		visual_state_override_frames = 10
@@ -1329,7 +1412,10 @@ func _update_visual_state() -> void:
 		return
 
 	if visual_state_override_frames > 0 and not visual_state_override_key.is_empty():
-		_set_visual(visual_state_override_key)
+		if visual_key != visual_state_override_key or visual_model == null:
+			_set_visual(visual_state_override_key)
+		elif visual_state_override_hold_last and visual_animation_player != null and not visual_animation_player.is_playing():
+			_hold_visual_animation_last_frame()
 		visual_state_override_frames -= 1
 	elif state == FighterState.KNOCKDOWN:
 		_update_knockdown_visual_state()
@@ -1349,7 +1435,7 @@ func _update_visual_state() -> void:
 
 func _update_knockdown_visual_state() -> void:
 	var remaining_frames := -state_frame
-	if _has_visual_scene("getup") and remaining_frames <= KNOCKDOWN_GETUP_VISUAL_FRAMES:
+	if not suppress_getup_visual and _has_visual_scene("getup") and remaining_frames <= KNOCKDOWN_GETUP_VISUAL_FRAMES:
 		var changed := visual_key != "getup"
 		if changed or visual_model == null:
 			_set_visual("getup")
