@@ -22,6 +22,6 @@ knockdown_on_hit = true
 knockdown_frames = 50
 preserve_launch_on_knockdown = true
 cancel_on_block = true
-animation_key = "anim_rising_upper"
+animation_key = "aerial_swing"
 vfx_key = "hit_spark_l"
 sfx_key = "special_2"

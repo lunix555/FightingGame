@@ -20,6 +20,7 @@ enum FighterState {
 	BLOCK,
 	HITSTUN,
 	ATTACK,
+	THROW_LOCK,
 	KNOCKDOWN,
 }
 
@@ -34,6 +35,7 @@ const STATE_NAMES := {
 	FighterState.BLOCK: "block",
 	FighterState.HITSTUN: "hitstun",
 	FighterState.ATTACK: "attack",
+	FighterState.THROW_LOCK: "throw_lock",
 	FighterState.KNOCKDOWN: "knockdown",
 }
 
@@ -117,6 +119,10 @@ var visual_cache := {}
 var visual_state_override_key := ""
 var visual_state_override_frames := 0
 var visual_state_override_hold_last := false
+var throw_lock_total_frames := 0
+var throw_lock_knockdown_after := false
+var throw_lock_knockdown_frames := 0
+var throw_lock_was_crouching := false
 var hitstun_visual_key := "hit"
 var knockdown_visual_key := "knockdown"
 var round_end_knockdown_hold := false
@@ -145,6 +151,15 @@ const COMBO_TIMEOUT_FRAMES := 90
 const COMBO_MIN_SCALE := 0.35
 const BLOCK_SHIELD_FRAMES := 22
 const SHADOW_STEP_BEHIND_OFFSET := 0.68
+const THROW_PAIR_VISUALS := [
+	{"att": "throw_att", "vic": "throw_vic"},
+	{"att": "throw_counter_att", "vic": "throw_counter_vic"},
+	{"att": "throw_groin_att", "vic": "throw_groin_vic"},
+	{"att": "throw_press_att", "vic": "throw_press_vic"},
+	{"att": "throw_push_att", "vic": "throw_push_vic"},
+	{"att": "throw_neck_att", "vic": "throw_neck_vic"},
+	{"att": "throw_knife_att", "vic": "throw_knife_vic"},
+]
 
 const DEFAULT_BASE_VISUAL_SCENE := "res://assets/fbx_model/Character_Base.FBX"
 const DEFAULT_VISUAL_SCENES := {
@@ -247,6 +262,10 @@ func apply_character_resources(move_folder: String, base_scene: String, scene_pa
 	visual_state_override_key = ""
 	visual_state_override_frames = 0
 	visual_state_override_hold_last = false
+	throw_lock_total_frames = 0
+	throw_lock_knockdown_after = false
+	throw_lock_knockdown_frames = 0
+	throw_lock_was_crouching = false
 	hitstun_visual_key = "hit"
 	if visual_model != null:
 		visual_model.queue_free()
@@ -287,6 +306,10 @@ func reset_for_round(spawn_position: Vector3, round_health: int, reset_meter: bo
 	throw_invuln_frames = 0
 	round_end_knockdown_hold = false
 	suppress_getup_visual = false
+	throw_lock_total_frames = 0
+	throw_lock_knockdown_after = false
+	throw_lock_knockdown_frames = 0
+	throw_lock_was_crouching = false
 	hitstun_visual_key = "hit"
 	block_shield_frames = 0
 	_hide_block_shield()
@@ -363,6 +386,43 @@ func visual_animation_duration_frames(key: String) -> int:
 	return int(ceil(animation.length * 60.0))
 
 
+func _select_throw_pair_visual(opponent_fighter: FighterController) -> Dictionary:
+	var available: Array[Dictionary] = []
+	for pair in THROW_PAIR_VISUALS:
+		var att_key := String(pair.get("att", ""))
+		var vic_key := String(pair.get("vic", ""))
+		if _has_visual_scene(att_key) and opponent_fighter != null and opponent_fighter.has_visual_scene_key(vic_key):
+			available.append({"att": att_key, "vic": vic_key})
+	if available.is_empty():
+		return {}
+	return available[randi() % available.size()]
+
+
+func _start_throw_lock_visual(key: String, duration_frames: int, knockdown_after: bool = false, knockdown_frames: int = 0, was_crouching: bool = false) -> int:
+	if not _has_visual_scene(key):
+		return 0
+	var visual_frames := maxi(1, visual_animation_duration_frames(key))
+	var lock_frames := maxi(visual_frames, duration_frames)
+	velocity = Vector3.ZERO
+	current_move = null
+	input_buffer.clear()
+	if hitbox_area != null:
+		hitbox_area.monitoring = false
+		hitbox_area.visible = false
+	_hide_attack_effect()
+	_enter_state(FighterState.THROW_LOCK)
+	throw_lock_total_frames = lock_frames
+	throw_lock_knockdown_after = knockdown_after
+	throw_lock_knockdown_frames = knockdown_frames
+	throw_lock_was_crouching = was_crouching
+	visual_state_override_key = key
+	visual_state_override_frames = lock_frames
+	visual_state_override_hold_last = true
+	_set_visual(key)
+	_play_visual_animation_fit_frames(lock_frames)
+	return lock_frames
+
+
 func has_visual_scene_key(key: String) -> bool:
 	return _has_visual_scene(key)
 
@@ -401,6 +461,12 @@ func tick() -> void:
 
 	if state == FighterState.KNOCKDOWN:
 		_tick_knockdown()
+		_update_visual_state()
+		state_frame += 1
+		_update_debug_visuals()
+		return
+	if state == FighterState.THROW_LOCK:
+		_tick_throw_lock()
 		_update_visual_state()
 		state_frame += 1
 		_update_debug_visuals()
@@ -444,11 +510,11 @@ func is_airborne() -> bool:
 
 
 func is_invulnerable_to_hits() -> bool:
-	return wakeup_invuln_frames > 0 or state == FighterState.KNOCKDOWN
+	return wakeup_invuln_frames > 0 or state in [FighterState.KNOCKDOWN, FighterState.THROW_LOCK]
 
 
 func is_throw_invulnerable() -> bool:
-	return throw_invuln_frames > 0 or state == FighterState.KNOCKDOWN or not is_on_floor()
+	return throw_invuln_frames > 0 or state in [FighterState.KNOCKDOWN, FighterState.THROW_LOCK] or not is_on_floor()
 
 
 func combo_text() -> String:
@@ -680,6 +746,31 @@ func _tick_knockdown() -> void:
 		_reset_combo()
 
 
+func _tick_throw_lock() -> void:
+	velocity = Vector3.ZERO
+	input_buffer.clear()
+	last_direction = 5
+	current_move = null
+	if hitbox_area != null:
+		hitbox_area.monitoring = false
+		hitbox_area.visible = false
+	_hide_attack_effect()
+	if state_frame < maxi(1, throw_lock_total_frames) - 1:
+		return
+
+	var should_knockdown := throw_lock_knockdown_after
+	var next_knockdown_frames := throw_lock_knockdown_frames
+	var next_was_crouching := throw_lock_was_crouching
+	throw_lock_total_frames = 0
+	throw_lock_knockdown_after = false
+	throw_lock_knockdown_frames = 0
+	throw_lock_was_crouching = false
+	if should_knockdown:
+		_enter_knockdown(next_knockdown_frames, false, next_was_crouching)
+	else:
+		_enter_state(FighterState.IDLE)
+
+
 func _apply_air_control() -> void:
 	var horizontal := _screen_horizontal_from_direction(last_direction)
 	if horizontal != 0.0:
@@ -857,16 +948,19 @@ func receive_block(move: MoveDefinition, attacker: FighterController) -> int:
 	return chip
 
 
-func receive_throw(move: MoveDefinition, attacker: FighterController) -> int:
+func receive_throw(move: MoveDefinition, attacker: FighterController, paired_visual_key: String = "", paired_visual_frames: int = 0) -> int:
 	if move == null or is_throw_invulnerable():
 		return 0
 	var damage := move.damage
 	health = max(0, health - damage)
 	_register_combo_damage(damage)
-	velocity = Vector3(1.85 * _push_direction_from_attacker(attacker), 0.0, 0.0)
 	_interrupt_current_action()
 	var was_crouching := is_on_floor() and (state == FighterState.CROUCH or last_direction in [1, 2, 3])
-	_enter_knockdown(move.knockdown_frames, false, was_crouching)
+	if not paired_visual_key.is_empty() and _has_visual_scene(paired_visual_key):
+		_start_throw_lock_visual(paired_visual_key, paired_visual_frames, true, move.knockdown_frames, was_crouching)
+	else:
+		velocity = Vector3(1.85 * _push_direction_from_attacker(attacker), 0.0, 0.0)
+		_enter_knockdown(move.knockdown_frames, false, was_crouching)
 	return damage
 
 
@@ -890,12 +984,23 @@ func _try_hit_opponent() -> void:
 				current_move.set_meta("hit_result", "block")
 				combat_event.emit("%s 的投技被 %s 拆投" % [character_name, opponent.character_name])
 			else:
-				var throw_damage := opponent.receive_throw(current_move, self)
+				var throw_move := current_move
+				var throw_pair := _select_throw_pair_visual(opponent)
+				var throw_attacker_key := String(throw_pair.get("att", ""))
+				var throw_victim_key := String(throw_pair.get("vic", ""))
+				var paired_throw_frames := 0
+				if not throw_pair.is_empty():
+					paired_throw_frames = maxi(visual_animation_duration_frames(throw_attacker_key), opponent.visual_animation_duration_frames(throw_victim_key))
+				var throw_damage := opponent.receive_throw(throw_move, self, throw_victim_key, paired_throw_frames)
 				if throw_damage > 0:
-					current_move.set_meta("hit_result", "hit")
-					_gain_meter(current_move.meter_gain_on_hit)
+					throw_move.set_meta("hit_result", "hit")
+					_gain_meter(throw_move.meter_gain_on_hit)
 					combat_event.emit("%s 投技命中，伤害 %d" % [character_name, throw_damage])
-					hit_confirmed.emit(current_move)
+					if paired_throw_frames > 0:
+						_start_throw_lock_visual(throw_attacker_key, paired_throw_frames, false)
+						hitstop_frames = 0
+						opponent.hitstop_frames = 0
+					hit_confirmed.emit(throw_move)
 		elif opponent.can_block_move(current_move, self):
 			var chip := opponent.receive_block(current_move, self)
 			current_move.set_meta("hit_result", "block")

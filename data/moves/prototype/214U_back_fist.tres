@@ -20,6 +20,6 @@ chip_damage = 22
 knockdown_on_hit = true
 knockdown_frames = 45
 cancel_on_block = true
-animation_key = "anim_back_fist"
+animation_key = "h2h_punch_02"
 vfx_key = "hit_spark_l"
 sfx_key = "special_1"

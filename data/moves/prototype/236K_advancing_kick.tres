@@ -22,6 +22,6 @@ chip_damage = 20
 knockdown_on_hit = true
 knockdown_frames = 45
 cancel_on_block = true
-animation_key = "hurricane_kick"
+animation_key = "h2h_kick_02"
 vfx_key = "hit_spark_m"
 sfx_key = "special_2"

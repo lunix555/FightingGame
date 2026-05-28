@@ -17,6 +17,6 @@ blockstun_frames = 11
 damage = 180
 knockdown_on_hit = true
 knockdown_frames = 45
-animation_key = "anim_forward_heavy"
+animation_key = "h2h_punch_02"
 vfx_key = "hit_spark_l"
 sfx_key = "hit_heavy"
