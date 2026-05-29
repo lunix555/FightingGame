@@ -10,6 +10,14 @@ const UI_TEX_PANEL := "res://assets/ui/kenney_sci_fi/panel_glass_screws.png"
 const UI_TEX_HEALTH := "res://assets/ui/kenney/bar_red.png"
 const UI_TEX_METER := "res://assets/ui/kenney/bar_yellow.png"
 const UI_TEX_STAR := "res://assets/ui/kenney/star_yellow.png"
+const UI_OD_BG := Color(0.025, 0.032, 0.052, 1.0)
+const UI_OD_PANEL := Color(0.045, 0.052, 0.078, 0.92)
+const UI_OD_LINE := Color(0.23, 0.42, 0.56, 0.78)
+const UI_OD_CYAN := Color(0.28, 0.9, 1.0, 1.0)
+const UI_OD_RED := Color(0.92, 0.17, 0.11, 1.0)
+const UI_OD_ORANGE := Color(1.0, 0.42, 0.08, 1.0)
+const UI_OD_CREAM := Color(0.96, 0.86, 0.74, 1.0)
+const UI_OD_GOLD := Color(1.0, 0.82, 0.25, 1.0)
 const SHOW_DEBUG_HUD := false
 const SOUND_PATHS := {
 	"H-01a": [
@@ -479,6 +487,7 @@ const CHARACTER_ROSTER := [
 	{
 		"name": "卡珊德拉骑士",
 		"style": "Action library fighter bound in Unreal",
+		"portrait": "res://assets/characters/kashandella_qishi/portraits/portrait.jpg",
 		"color": Color(0.93, 0.74, 0.45),
 		"move_folder": "res://data/moves/prototype",
 		"move_overrides": {
@@ -557,6 +566,7 @@ const CHARACTER_ROSTER := [
 	{
 		"name": "薇拉法师",
 		"style": "Action library fighter bound in Unreal",
+		"portrait": "res://assets/characters/wela_fashi/portraits/portrait.jpg",
 		"color": Color(0.62, 0.76, 1.0),
 		"move_folder": "res://data/moves/prototype",
 		"move_overrides": {
@@ -1376,7 +1386,7 @@ func _setup_hud() -> void:
 	p1_health_label.position = Vector2(88.0, 12.0)
 	battle_hud_root.add_child(p1_health_label)
 
-	var p1_portrait := _make_portrait()
+	var p1_portrait := _make_portrait(p1_character_index)
 	p1_portrait.position = Vector2(14.0, 10.0)
 	battle_hud_root.add_child(p1_portrait)
 
@@ -1403,7 +1413,7 @@ func _setup_hud() -> void:
 	p2_health_label.offset_bottom = 34.0
 	battle_hud_root.add_child(p2_health_label)
 
-	var p2_portrait := _make_portrait()
+	var p2_portrait := _make_portrait(p2_character_index)
 	p2_portrait.anchor_left = 1.0
 	p2_portrait.anchor_right = 1.0
 	p2_portrait.offset_left = -78.0
@@ -1767,7 +1777,7 @@ func _show_character_select() -> void:
 	hud_layer.add_child(menu_root)
 
 	var background := ColorRect.new()
-	background.color = Color(0.02, 0.024, 0.03, 1.0)
+	background.color = UI_OD_BG
 	background.anchor_right = 1.0
 	background.anchor_bottom = 1.0
 	menu_root.add_child(background)
@@ -1790,7 +1800,11 @@ func _show_character_select() -> void:
 	var title := Label.new()
 	title.text = "角色选择"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_font_size_override("font_size", 42)
+	title.add_theme_color_override("font_color", UI_OD_CREAM)
+	title.add_theme_color_override("font_shadow_color", UI_OD_RED)
+	title.add_theme_constant_override("shadow_offset_x", 5)
+	title.add_theme_constant_override("shadow_offset_y", 0)
 	root.add_child(title)
 
 	var main_row := HBoxContainer.new()
@@ -1862,14 +1876,8 @@ func _make_character_preview_panel(player: int) -> Control:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(260.0, 560.0)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.07, 0.075, 0.09, 0.94)
-	style.border_width_left = 2
-	style.border_width_top = 2
-	style.border_width_right = 2
-	style.border_width_bottom = 2
-	style.border_color = Color(0.22, 0.24, 0.28)
-	panel.add_theme_stylebox_override("panel", style)
+	var border := UI_OD_CYAN if player == 1 else UI_OD_RED
+	panel.add_theme_stylebox_override("panel", _ui_panel_style(UI_OD_PANEL, border, 2))
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 14)
@@ -1886,6 +1894,7 @@ func _make_character_preview_panel(player: int) -> Control:
 	player_label.text = "1P" if player == 1 else ("电脑" if battle_mode == BattleMode.PVE else "2P")
 	player_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	player_label.add_theme_font_size_override("font_size", 24)
+	player_label.add_theme_color_override("font_color", border)
 	box.add_child(player_label)
 
 	var model_preview := _make_character_model_preview(player)
@@ -2059,7 +2068,6 @@ func _make_character_tile(index: int) -> PanelContainer:
 
 	var portrait := TextureRect.new()
 	portrait.texture = _portrait_texture_for_character(index)
-	portrait.modulate = CHARACTER_ROSTER[index]["color"]
 	portrait.custom_minimum_size = Vector2(64.0, 64.0)
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -2484,34 +2492,35 @@ func _update_character_preview(player: int) -> void:
 
 func _apply_character_tile_style(tile: PanelContainer, index: int) -> void:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.11, 0.115, 0.14, 0.96)
+	style.bg_color = Color(0.035, 0.043, 0.064, 0.96)
 	style.border_width_left = 2
 	style.border_width_top = 2
 	style.border_width_right = 2
 	style.border_width_bottom = 2
-	style.border_color = Color(0.26, 0.28, 0.34)
+	style.border_color = UI_OD_LINE
+	style.corner_detail = 1
 
 	if index == p1_character_index and index == p2_character_index and battle_mode == BattleMode.PVP:
 		style.border_width_left = 5
 		style.border_width_top = 5
 		style.border_width_right = 5
 		style.border_width_bottom = 5
-		style.border_color = Color(1.0, 0.35, 0.95)
+		style.border_color = Color(0.95, 0.26, 1.0)
 	elif index == p1_character_index:
 		style.border_width_left = 5
 		style.border_width_top = 5
 		style.border_width_right = 5
 		style.border_width_bottom = 5
-		style.border_color = Color(0.18, 0.58, 1.0)
+		style.border_color = UI_OD_CYAN
 	elif index == p2_character_index and battle_mode == BattleMode.PVP:
 		style.border_width_left = 5
 		style.border_width_top = 5
 		style.border_width_right = 5
 		style.border_width_bottom = 5
-		style.border_color = Color(1.0, 0.24, 0.2)
+		style.border_color = UI_OD_RED
 
 	if (index == p1_character_index and p1_character_locked) or (index == p2_character_index and p2_character_locked and battle_mode == BattleMode.PVP):
-		style.bg_color = Color(0.16, 0.2, 0.14, 0.96)
+		style.bg_color = Color(0.08, 0.12, 0.08, 0.96)
 
 	var selected := index == p1_character_index or (battle_mode == BattleMode.PVP and index == p2_character_index)
 	if selected:
@@ -4054,7 +4063,7 @@ func _make_health_bar() -> ProgressBar:
 	bar.value = max_health
 	bar.show_percentage = false
 	bar.custom_minimum_size = Vector2(360.0, 26.0)
-	_apply_bar_style(bar, Color(0.92, 0.18, 0.16), Color(0.07, 0.08, 0.09), UI_TEX_HEALTH)
+	_apply_bar_style(bar, UI_OD_CREAM, Color(0.02, 0.025, 0.035), "")
 	return bar
 
 
@@ -4065,7 +4074,7 @@ func _make_meter_bar() -> ProgressBar:
 	bar.value = 0
 	bar.show_percentage = false
 	bar.custom_minimum_size = Vector2(360.0, 18.0)
-	_apply_bar_style(bar, Color(1.0, 0.76, 0.12), Color(0.12, 0.09, 0.03), UI_TEX_METER)
+	_apply_bar_style(bar, UI_OD_GOLD, Color(0.04, 0.025, 0.01), "")
 	_add_meter_stock_ticks(bar)
 	return bar
 
@@ -4090,9 +4099,11 @@ func _add_meter_stock_ticks(bar: ProgressBar) -> void:
 func _apply_bar_style(bar: ProgressBar, fill_color: Color, background_color: Color, fill_texture_path: String = "") -> void:
 	var background := StyleBoxFlat.new()
 	background.bg_color = background_color
-	background.border_color = Color(0.68, 0.82, 0.92, 0.62)
+	background.border_color = UI_OD_LINE
 	background.set_border_width_all(2)
-	background.set_corner_radius_all(3)
+	background.set_corner_radius_all(0)
+	background.shadow_color = Color(0.0, 0.0, 0.0, 0.62)
+	background.shadow_size = 6
 	bar.add_theme_stylebox_override("background", background)
 	if not fill_texture_path.is_empty():
 		var fill := _ui_texture_style(fill_texture_path, "bar:%s" % fill_texture_path)
@@ -4100,7 +4111,9 @@ func _apply_bar_style(bar: ProgressBar, fill_color: Color, background_color: Col
 	else:
 		var fill := StyleBoxFlat.new()
 		fill.bg_color = fill_color
-		fill.set_corner_radius_all(3)
+		fill.border_color = Color(1.0, 1.0, 1.0, 0.18)
+		fill.set_border_width_all(1)
+		fill.set_corner_radius_all(0)
 		bar.add_theme_stylebox_override("fill", fill)
 
 
@@ -4131,20 +4144,21 @@ func _ui_panel_style(fill: Color, border: Color, border_width: int = 1) -> Style
 	style.bg_color = fill
 	style.border_color = border
 	style.set_border_width_all(border_width)
-	style.set_corner_radius_all(6)
-	style.shadow_color = Color(0.0, 0.0, 0.0, 0.38)
-	style.shadow_size = 8
+	style.set_corner_radius_all(0)
+	style.corner_detail = 1
+	style.shadow_color = Color(0.0, 0.0, 0.0, 0.58)
+	style.shadow_size = 14
 	ui_style_cache[key] = style
 	return style
 
 
 func _apply_kenney_button_style(button: Button) -> void:
-	button.add_theme_stylebox_override("normal", _ui_texture_style(UI_TEX_BUTTON, "button_normal"))
-	button.add_theme_stylebox_override("hover", _ui_texture_style(UI_TEX_BUTTON_BORDER, "button_hover"))
-	button.add_theme_stylebox_override("pressed", _ui_texture_style(UI_TEX_BUTTON_BORDER, "button_pressed"))
+	button.add_theme_stylebox_override("normal", _ui_button_style(Color(1.0, 1.0, 1.0, 0.045), UI_OD_LINE))
+	button.add_theme_stylebox_override("hover", _ui_button_style(Color(UI_OD_RED.r, UI_OD_RED.g, UI_OD_RED.b, 0.42), UI_OD_RED))
+	button.add_theme_stylebox_override("pressed", _ui_button_style(Color(UI_OD_CYAN.r, UI_OD_CYAN.g, UI_OD_CYAN.b, 0.18), UI_OD_CYAN))
 	button.add_theme_color_override("font_color", Color(0.96, 0.98, 1.0))
-	button.add_theme_color_override("font_hover_color", Color(1.0, 0.94, 0.42))
-	button.add_theme_color_override("font_pressed_color", Color(0.75, 0.94, 1.0))
+	button.add_theme_color_override("font_hover_color", UI_OD_CREAM)
+	button.add_theme_color_override("font_pressed_color", UI_OD_CYAN)
 	button.add_theme_constant_override("outline_size", 2)
 	button.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.65))
 	if not bool(button.get_meta("ui_sfx_connected", false)):
@@ -4156,6 +4170,26 @@ func _apply_kenney_button_style(button: Button) -> void:
 		var click_sfx := String(button.get_meta("click_sfx", "ui_click"))
 		button.pressed.connect(_play_sfx.bind(click_sfx))
 		button.set_meta("ui_sfx_connected", true)
+
+
+func _ui_button_style(fill: Color, border: Color) -> StyleBoxFlat:
+	var key := "od_button:%s:%s" % [fill.to_html(), border.to_html()]
+	if ui_style_cache.has(key):
+		return ui_style_cache[key] as StyleBoxFlat
+	var style := StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = border
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(0)
+	style.corner_detail = 1
+	style.content_margin_left = 18
+	style.content_margin_right = 18
+	style.content_margin_top = 12
+	style.content_margin_bottom = 12
+	style.shadow_color = Color(0.0, 0.0, 0.0, 0.42)
+	style.shadow_size = 8
+	ui_style_cache[key] = style
+	return style
 
 
 func _add_menu_ambient_fx(root: Control, alpha: float) -> void:
