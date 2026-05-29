@@ -26,3 +26,6 @@ cancel_on_block = true
 animation_key = "anim_overdrive"
 vfx_key = "super_flash"
 sfx_key = "super"
+cinematic_enabled = true
+cinematic_duration_frames = 620
+cinematic_damage = 280

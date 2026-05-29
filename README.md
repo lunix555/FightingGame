@@ -251,13 +251,13 @@ assets/cinematics/<character_id>/<move_id>/
 			"cinematic_duration_frames": 150,
 			"cinematic_video_path": "res://assets/cinematics/fast_fighter/236236J/special.ogv",
 		},
-		"6246K": {
+		"632146K": {
 			"startup_frames": 12,
 			"recovery_frames": 34,
 			"damage": 160,
 			"cinematic_damage": 280,
 			"cinematic_duration_frames": 210,
-			"cinematic_video_path": "res://assets/cinematics/fast_fighter/6246K/super.ogv",
+			"cinematic_video_path": "res://assets/cinematics/fast_fighter/632146K/super.ogv",
 		},
 	},
 }

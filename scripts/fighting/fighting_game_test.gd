@@ -485,6 +485,9 @@ const CHARACTER_ROSTER := [
 			"5K": {"animation_key": "kick"},
 			"5I": {"animation_key": "kick"},
 			"236K": {"animation_key": "h2h_kick_02"},
+			"236236J": {"cinematic_video_path": "res://assets/cinematics/kashandella_qishi_236236J.ogv", "cinematic_duration_frames": 620},
+			"632146K": {"cinematic_video_path": "res://assets/cinematics/kashandella_qishi_632146K.ogv", "cinematic_duration_frames": 620},
+			"236236O": {"cinematic_video_path": "res://assets/cinematics/kashandella_qishi_236236O.ogv", "cinematic_duration_frames": 620},
 		},
 		"stats": {"walk_speed": 2.5, "dash_speed": 5.85, "jump_speed": 5.05, "air_control_speed": 2.35},
 		"visual": {
@@ -560,6 +563,9 @@ const CHARACTER_ROSTER := [
 			"5K": {"animation_key": "kick"},
 			"5I": {"animation_key": "kick"},
 			"236K": {"animation_key": "hurricane_kick"},
+			"236236J": {"cinematic_video_path": "res://assets/cinematics/wela_fashi_236236J.ogv", "cinematic_duration_frames": 620},
+			"632146K": {"cinematic_video_path": "res://assets/cinematics/wela_fashi_632146K.ogv", "cinematic_duration_frames": 620},
+			"236236O": {"cinematic_video_path": "res://assets/cinematics/wela_fashi_236236O.ogv", "cinematic_duration_frames": 620},
 		},
 		"stats": {"walk_speed": 2.72, "dash_speed": 6.18, "jump_speed": 5.2, "air_control_speed": 2.58},
 		"visual": {
@@ -1011,6 +1017,7 @@ var cinematic_layer: CanvasLayer
 var cinematic_root: Control
 var cinematic_video_player: VideoStreamPlayer
 var cinematic_frames_left := 0
+var cinematic_damage_settled := false
 var pending_cinematic := {}
 var debug_face_right_degrees := 140.0
 var debug_face_left_degrees := 40.0
@@ -1143,6 +1150,7 @@ func _unload_battle_scene() -> void:
 	_hide_cinematic_overlay()
 	pending_cinematic.clear()
 	cinematic_frames_left = 0
+	cinematic_damage_settled = false
 	p1_health_bar = null
 	p2_health_bar = null
 	p1_meter_bar = null
@@ -3183,6 +3191,7 @@ func _on_cinematic_requested(move: MoveDefinition, attacker: FighterController, 
 		"attacker": attacker,
 		"defender": defender,
 	}
+	cinematic_damage_settled = false
 	cinematic_frames_left = maxi(1, move.cinematic_duration_frames)
 	flow_state = FlowState.CINEMATIC
 	_reset_ai_control()
@@ -3270,17 +3279,54 @@ func _finish_cinematic() -> void:
 	var move := pending_cinematic.get("move") as MoveDefinition
 	var attacker := pending_cinematic.get("attacker") as FighterController
 	var defender := pending_cinematic.get("defender") as FighterController
+	if not cinematic_damage_settled:
+		cinematic_damage_settled = true
+		if move != null and attacker != null and defender != null and is_instance_valid(defender):
+			var dealt := defender.receive_cinematic_damage(move, attacker, move.cinematic_damage)
+			last_log = "%s 演出结算：%s 伤害 %d" % [attacker.character_name, move.display_name, dealt]
+			_update_hud()
+			if defender.health <= 0 and cinematic_root != null:
+				cinematic_frames_left = 42
+				_show_cinematic_ko_hold()
+				return
 	pending_cinematic.clear()
 	cinematic_frames_left = 0
+	cinematic_damage_settled = false
 	_hide_cinematic_overlay()
 	_set_music_volume(-6.0)
 	flow_state = FlowState.FIGHTING
 	_clear_battle_input()
-	if move != null and attacker != null and defender != null and is_instance_valid(defender):
-		var dealt := defender.receive_cinematic_damage(move, attacker, move.cinematic_damage)
-		last_log = "%s 演出结算：%s 伤害 %d" % [attacker.character_name, move.display_name, dealt]
 	_update_hud()
 	_check_round_end()
+
+
+func _show_cinematic_ko_hold() -> void:
+	if cinematic_root == null:
+		return
+	if cinematic_video_player != null:
+		cinematic_video_player.paused = true
+	if cinematic_root.get_node_or_null("CinematicKO") != null:
+		return
+	var ko_label := Label.new()
+	ko_label.name = "CinematicKO"
+	ko_label.text = "K.O."
+	ko_label.anchor_left = 0.5
+	ko_label.anchor_right = 0.5
+	ko_label.anchor_top = 0.5
+	ko_label.anchor_bottom = 0.5
+	ko_label.offset_left = -220.0
+	ko_label.offset_right = 220.0
+	ko_label.offset_top = -86.0
+	ko_label.offset_bottom = 86.0
+	ko_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ko_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	ko_label.add_theme_font_size_override("font_size", 76)
+	ko_label.add_theme_color_override("font_color", Color(1.0, 0.18, 0.08))
+	ko_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.9))
+	ko_label.add_theme_constant_override("shadow_offset_x", 5)
+	ko_label.add_theme_constant_override("shadow_offset_y", 5)
+	cinematic_root.add_child(ko_label)
+	_apply_ui_font(ko_label)
 
 
 func _hide_cinematic_overlay() -> void:
@@ -3477,7 +3523,7 @@ func _ai_hold_back(state: Dictionary) -> void:
 
 func _choose_ai_attack(distance: float, p1_is_defending: bool, p1_is_retreating: bool) -> void:
 	if p2.meter >= METER_STOCK_VALUE * 2 and distance < 1.55 and randi() % 4 == 0:
-		_queue_ai_command([6, 2, 4, 6], "k", 92)
+		_queue_ai_command([6, 3, 2, 1, 4, 6], "k", 92)
 		last_log = "电脑抓近身机会放超必杀"
 		return
 

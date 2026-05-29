@@ -4,11 +4,11 @@
 
 [resource]
 script = ExtResource("1_move")
-id = "6246K"
+id = "632146K"
 display_name = "Super Kick"
 move_type = 3
 attack_level = 0
-motion = "6246"
+motion = "632146"
 button = "K"
 startup_frames = 14
 active_frames = 12
@@ -29,5 +29,5 @@ animation_key = "anim_overdrive"
 vfx_key = "super_flash"
 sfx_key = "super"
 cinematic_enabled = true
-cinematic_duration_frames = 210
+cinematic_duration_frames = 620
 cinematic_damage = 280

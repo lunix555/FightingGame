@@ -20,7 +20,7 @@ static func build_default_moves() -> Array[MoveDefinition]:
 		_make_projectile("236O", "地波", "236", "O", 14, 3, 30, 130, 4.25, 0.26, 0.0, 0.0, true, false, true, MoveDefinition.AttackLevel.MID, 0.2),
 		_make("236236J", "普通必杀", MoveDefinition.MoveType.SPECIAL, "236236", "J", 8, 8, 22, 165, "anim_fireball", "muzzle_flash", "special_1", 3.0, 1.0, MoveDefinition.AttackLevel.MID, 100),
 		_make("236K", "旋风腿", MoveDefinition.MoveType.SPECIAL, "236", "K", 10, 8, 24, 190, "anim_advancing_kick", "hit_spark_m", "special_2", 2.05, 1.1, MoveDefinition.AttackLevel.MID, 0, true),
-		_make("6246K", "Super Kick", MoveDefinition.MoveType.SUPER, "6246", "K", 14, 12, 36, 390, "anim_overdrive", "super_flash", "super", 4.2, 1.35, MoveDefinition.AttackLevel.MID, 200, true, 70),
+		_make("632146K", "Super Kick", MoveDefinition.MoveType.SUPER, "632146", "K", 14, 12, 36, 390, "anim_overdrive", "super_flash", "super", 4.2, 1.35, MoveDefinition.AttackLevel.MID, 200, true, 70),
 		_make("214U", "后拳反击", MoveDefinition.MoveType.SPECIAL, "214", "U", 5, 8, 32, 210, "anim_back_fist", "hit_spark_l", "special_1", 1.15, 1.0, MoveDefinition.AttackLevel.MID, 0, true),
 		_make("214L", "Shadow Step", MoveDefinition.MoveType.SPECIAL, "214", "L", 5, 0, 16, 0, "anim_dash", "shadow_step", "ui_switch", 0.0, 0.0),
 		_make("623I", "升龙拳", MoveDefinition.MoveType.SPECIAL, "623", "I", 8, 5, 27, 220, "rising_upper", "hit_spark_l", "special_2", 0.78, 1.32, MoveDefinition.AttackLevel.MID, 0, true),
@@ -28,9 +28,9 @@ static func build_default_moves() -> Array[MoveDefinition]:
 		_make("236236O", "Overdrive", MoveDefinition.MoveType.SUPER, "236236", "O", 25, 15, 40, 430, "anim_overdrive", "super_flash", "super", 1.15, 1.0, MoveDefinition.AttackLevel.MID, 200, true, 70),
 	]
 	for move in moves:
-		if move.id in ["236236J", "6246K"]:
+		if move.id in ["236236J", "632146K", "236236O"]:
 			move.cinematic_enabled = true
-			move.cinematic_duration_frames = 150 if move.id == "236236J" else 210
+			move.cinematic_duration_frames = 620
 			move.cinematic_damage = 140 if move.id == "236236J" else 280
 	return moves
 
