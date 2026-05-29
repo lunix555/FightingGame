@@ -10,6 +10,7 @@ const UI_TEX_PANEL := "res://assets/ui/kenney_sci_fi/panel_glass_screws.png"
 const UI_TEX_HEALTH := "res://assets/ui/kenney/bar_red.png"
 const UI_TEX_METER := "res://assets/ui/kenney/bar_yellow.png"
 const UI_TEX_STAR := "res://assets/ui/kenney/star_yellow.png"
+const SHOW_DEBUG_HUD := false
 const SOUND_PATHS := {
 	"H-01a": [
 		"res://assets/audio/SFX_H/H-01a_hit_light_chain_01.wav",
@@ -221,7 +222,7 @@ const AI_DEFAULT_ATTACK_COOLDOWN := 28
 const AI_DEFAULT_JUMP_COOLDOWN := 120
 const AI_STATE_KEYS := ["left", "right", "up", "down", "j", "k", "l", "u", "i", "o"]
 const AI_CLOSE_RANGE := 0.78
-const AI_THROW_RANGE := 1.45
+const AI_THROW_RANGE := 1.22
 const AI_MID_RANGE := 1.35
 const AI_LONG_RANGE := 2.1
 const CHARACTER_GRID_COLUMNS := 4
@@ -799,6 +800,36 @@ class LoadingSpinner:
 		draw_arc(center, radius * 0.58, elapsed * -3.0, elapsed * -3.0 + PI * 1.35, 32, Color(1.0, 0.82, 0.24, 0.82), 3.0)
 
 
+class LoadingProgressBar:
+	extends Control
+
+	var elapsed := 0.0
+
+	func _init() -> void:
+		custom_minimum_size = Vector2(420.0, 18.0)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _ready() -> void:
+		set_process(true)
+
+	func _process(delta: float) -> void:
+		elapsed += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		var rect := Rect2(Vector2.ZERO, size)
+		draw_rect(rect, Color(0.02, 0.05, 0.09, 0.92), true)
+		draw_rect(rect, Color(0.2, 0.55, 0.95, 0.78), false, 2.0)
+		var segment_width := maxf(size.x * 0.26, 96.0)
+		var x := fposmod(elapsed * 220.0, size.x + segment_width) - segment_width
+		var fill_rect := Rect2(Vector2(x, 3.0), Vector2(segment_width, maxf(1.0, size.y - 6.0)))
+		draw_rect(fill_rect, Color(0.15, 0.74, 1.0, 0.38), true)
+		draw_rect(Rect2(Vector2(x + segment_width * 0.28, 3.0), Vector2(segment_width * 0.42, maxf(1.0, size.y - 6.0))), Color(1.0, 0.84, 0.25, 0.82), true)
+		for i in range(5):
+			var tick_x := float(i + 1) * size.x / 6.0
+			draw_line(Vector2(tick_x, 3.0), Vector2(tick_x, size.y - 3.0), Color(0.7, 0.9, 1.0, 0.18), 1.0)
+
+
 class CharacterSelectFireFx:
 	extends Control
 
@@ -1055,14 +1086,15 @@ func _setup_ui_layer() -> void:
 	hud_layer.name = "HUD"
 	hud_layer.layer = 20
 	add_child(hud_layer)
-	build_debug_label = Label.new()
-	build_debug_label.name = "BuildDebugLabel"
-	build_debug_label.position = Vector2(12.0, 4.0)
-	build_debug_label.add_theme_font_size_override("font_size", 14)
-	build_debug_label.add_theme_color_override("font_color", Color(0.35, 1.0, 0.72))
-	hud_layer.add_child(build_debug_label)
-	_apply_ui_font(build_debug_label)
-	_update_build_debug_label()
+	if SHOW_DEBUG_HUD:
+		build_debug_label = Label.new()
+		build_debug_label.name = "BuildDebugLabel"
+		build_debug_label.position = Vector2(12.0, 4.0)
+		build_debug_label.add_theme_font_size_override("font_size", 14)
+		build_debug_label.add_theme_color_override("font_color", Color(0.35, 1.0, 0.72))
+		hud_layer.add_child(build_debug_label)
+		_apply_ui_font(build_debug_label)
+		_update_build_debug_label()
 
 
 func _setup_audio() -> void:
@@ -1458,31 +1490,32 @@ func _setup_hud() -> void:
 	p2_meter_label.offset_bottom = -22.0
 	battle_hud_root.add_child(p2_meter_label)
 
-	var panel := PanelContainer.new()
-	panel.position = Vector2(16.0, 96.0)
-	panel.modulate = Color(1.0, 1.0, 1.0, 0.72)
-	panel.custom_minimum_size = Vector2(720.0, 132.0)
-	panel.add_theme_stylebox_override("panel", _ui_panel_style(Color(0.04, 0.055, 0.075, 0.82), Color(0.24, 0.58, 0.82, 0.62), 2))
-	battle_hud_root.add_child(panel)
+	if SHOW_DEBUG_HUD:
+		var panel := PanelContainer.new()
+		panel.position = Vector2(16.0, 96.0)
+		panel.modulate = Color(1.0, 1.0, 1.0, 0.72)
+		panel.custom_minimum_size = Vector2(720.0, 132.0)
+		panel.add_theme_stylebox_override("panel", _ui_panel_style(Color(0.04, 0.055, 0.075, 0.82), Color(0.24, 0.58, 0.82, 0.62), 2))
+		battle_hud_root.add_child(panel)
 
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 14)
-	margin.add_theme_constant_override("margin_right", 14)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_bottom", 12)
-	panel.add_child(margin)
+		var margin := MarginContainer.new()
+		margin.add_theme_constant_override("margin_left", 14)
+		margin.add_theme_constant_override("margin_right", 14)
+		margin.add_theme_constant_override("margin_top", 12)
+		margin.add_theme_constant_override("margin_bottom", 12)
+		panel.add_child(margin)
 
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 8)
-	margin.add_child(box)
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 8)
+		margin.add_child(box)
 
-	hud_label = Label.new()
-	hud_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(hud_label)
+		hud_label = Label.new()
+		hud_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.add_child(hud_label)
 
-	log_label = Label.new()
-	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(log_label)
+		log_label = Label.new()
+		log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.add_child(log_label)
 
 	screen_fade = ColorRect.new()
 	screen_fade.color = Color(0.0, 0.0, 0.0, 0.0)
@@ -1515,7 +1548,8 @@ func _setup_hud() -> void:
 
 
 func _update_hud() -> void:
-	_update_build_debug_label()
+	if SHOW_DEBUG_HUD:
+		_update_build_debug_label()
 	if p1 == null or p2 == null or p1_health_bar == null or p2_health_bar == null:
 		return
 	_update_hud_feedback()
@@ -1533,6 +1567,8 @@ func _update_hud() -> void:
 	_update_combo_hud()
 
 	if game_frame % hud_text_update_interval != 0:
+		return
+	if not SHOW_DEBUG_HUD or hud_label == null or log_label == null:
 		return
 
 	var fps := Performance.get_monitor(Performance.TIME_FPS)
@@ -1668,12 +1704,19 @@ func _show_mode_select() -> void:
 func _select_pve() -> void:
 	battle_mode = BattleMode.PVE
 	_apply_default_match_rules()
-	_show_character_select()
+	_open_character_select()
 
 
 func _select_pvp() -> void:
 	battle_mode = BattleMode.PVP
 	_apply_default_match_rules()
+	_open_character_select()
+
+
+func _open_character_select() -> void:
+	flow_state = FlowState.LOADING_BATTLE
+	_show_character_select_loading_screen()
+	await _let_loading_feedback_breathe()
 	_show_character_select()
 
 
@@ -2480,8 +2523,7 @@ func _begin_match() -> void:
 	_show_battle_loading_screen()
 	p1_select_preview_fighter = null
 	p2_select_preview_fighter = null
-	await get_tree().process_frame
-	await get_tree().process_frame
+	await _let_loading_feedback_breathe()
 	_load_battle_scene()
 	_apply_selected_characters()
 	p1_round_wins = 0
@@ -2493,27 +2535,48 @@ func _begin_match() -> void:
 	_start_round()
 
 
+func _let_loading_feedback_breathe() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await get_tree().create_timer(0.18).timeout
+
+
+func _show_character_select_loading_screen() -> void:
+	_play_menu_music()
+	_set_menu(
+		"加载选人界面",
+		"正在准备角色预览、立绘与选择框。",
+		[],
+		[_make_loading_hint("首次打开选人界面时会加载角色模型，请稍等。")],
+		1.0
+	)
+	_play_sfx("ui_switch")
+
+
 func _show_battle_loading_screen() -> void:
 	_play_stage_select_music()
 	_set_menu(
 		"加载战斗中",
 		"正在创建战斗场景、角色模型和对战界面，请稍等。",
 		[],
-		[_make_loading_hint()],
+		[_make_loading_hint("首次进入可能需要几秒加载 FBX 模型和贴图。")],
 		1.0
 	)
 	_play_sfx("ui_switch")
 
 
-func _make_loading_hint() -> Control:
+func _make_loading_hint(message: String) -> Control:
 	var box := VBoxContainer.new()
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	box.add_theme_constant_override("separation", 12)
 	var center := CenterContainer.new()
 	center.add_child(LoadingSpinner.new())
 	box.add_child(center)
+	var progress_center := CenterContainer.new()
+	progress_center.add_child(LoadingProgressBar.new())
+	box.add_child(progress_center)
 	var label := Label.new()
-	label.text = "首次进入可能需要几秒加载 FBX 模型和贴图。"
+	label.text = message
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
@@ -2596,8 +2659,9 @@ func _show_pause_moves_for_player(player: int) -> void:
 
 
 func _reset_fighters() -> void:
-	p1.reset_for_round(P1_SPAWN, max_health, true)
-	p2.reset_for_round(P2_SPAWN, max_health, true)
+	var reset_meter := round_number <= 0
+	p1.reset_for_round(P1_SPAWN, max_health, reset_meter)
+	p2.reset_for_round(P2_SPAWN, max_health, reset_meter)
 	p1.refresh_facing_from_opponent()
 	p2.refresh_facing_from_opponent()
 	_clear_battle_input()
@@ -2943,7 +3007,7 @@ func _apply_visual_facing_angles_to_active_fighters() -> void:
 
 
 func _update_build_debug_label() -> void:
-	if build_debug_label == null:
+	if not SHOW_DEBUG_HUD or build_debug_label == null:
 		return
 	var music_status := "Music n/a"
 	if music_manager != null and music_manager.player != null:
@@ -3818,10 +3882,10 @@ func _input(event: InputEvent) -> void:
 		_unlock_music_from_input()
 	if event is InputEventKey and event.pressed and not event.echo:
 		var key_event := event as InputEventKey
-		if key_event.keycode == KEY_F9:
+		if SHOW_DEBUG_HUD and key_event.keycode == KEY_F9:
 			_adjust_visual_facing_angles(-10.0)
 			get_viewport().set_input_as_handled()
-		elif key_event.keycode == KEY_F10:
+		elif SHOW_DEBUG_HUD and key_event.keycode == KEY_F10:
 			_adjust_visual_facing_angles(10.0)
 			get_viewport().set_input_as_handled()
 		elif flow_state == FlowState.CHARACTER_SELECT:

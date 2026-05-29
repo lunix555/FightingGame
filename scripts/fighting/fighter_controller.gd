@@ -146,9 +146,12 @@ const METER_STOCK_VALUE := 100
 const METER_MAX_STOCKS := 3
 const METER_MAX := METER_STOCK_VALUE * METER_MAX_STOCKS
 const BLOCK_CHIP_RATIO := 0.12
+const METER_FULL_STOCK_DAMAGE_TAKEN := 250.0
+const BLOCKED_DAMAGE_METER_SCALE := 0.55
 const MIN_BODY_SPACING := 0.56
 const WAKEUP_INVULN_FRAMES := 18
 const THROW_INVULN_FRAMES := 12
+const THROW_PAIR_SPACING := 0.78
 const COMBO_TIMEOUT_FRAMES := 90
 const COMBO_MIN_SCALE := 0.35
 const BLOCK_SHIELD_FRAMES := 22
@@ -910,6 +913,7 @@ func _apply_unblocked_hit_damage(move: MoveDefinition, attacker: FighterControll
 	var was_crouching := is_on_floor() and (state == FighterState.CROUCH or last_direction in [1, 2, 3])
 	_set_hitstun_visual_key(was_crouching)
 	health = max(0, health - damage)
+	_gain_meter_from_damage_taken(damage)
 	_register_combo_damage(damage)
 	_show_impact_flash(move, false)
 	sound_requested.emit(_hit_sound_key(move))
@@ -948,6 +952,7 @@ func receive_block(move: MoveDefinition, attacker: FighterController) -> int:
 	if chip <= 0:
 		chip = maxi(1, int(round(float(move.damage) * BLOCK_CHIP_RATIO)))
 	health = max(0, health - chip)
+	_gain_meter_from_damage_taken(chip, true)
 	_reset_combo()
 	_show_impact_flash(move, true)
 	_show_block_shield(move, attacker)
@@ -963,16 +968,21 @@ func receive_block(move: MoveDefinition, attacker: FighterController) -> int:
 	return chip
 
 
-func receive_throw(move: MoveDefinition, attacker: FighterController, paired_visual_key: String = "", paired_visual_frames: int = 0) -> int:
+func receive_throw(move: MoveDefinition, attacker: FighterController, paired_visual_key: String = "", paired_visual_frames: int = 0, start_paired_visual: bool = true) -> int:
 	if move == null or is_throw_invulnerable():
 		return 0
 	var damage := move.damage
 	health = max(0, health - damage)
+	_gain_meter_from_damage_taken(damage)
 	_register_combo_damage(damage)
 	_interrupt_current_action()
 	var was_crouching := is_on_floor() and (state == FighterState.CROUCH or last_direction in [1, 2, 3])
 	if not paired_visual_key.is_empty() and _has_visual_scene(paired_visual_key):
-		_start_throw_lock_visual(paired_visual_key, paired_visual_frames, true, move.knockdown_frames, was_crouching)
+		if start_paired_visual:
+			_start_throw_lock_visual(paired_visual_key, paired_visual_frames, true, move.knockdown_frames, was_crouching)
+		else:
+			velocity = Vector3.ZERO
+			throw_lock_was_crouching = was_crouching
 	else:
 		velocity = Vector3(1.85 * _push_direction_from_attacker(attacker), 0.0, 0.0)
 		_enter_knockdown(move.knockdown_frames, false, was_crouching)
@@ -1006,13 +1016,16 @@ func _try_hit_opponent() -> void:
 				var paired_throw_frames := 0
 				if not throw_pair.is_empty():
 					paired_throw_frames = maxi(visual_animation_duration_frames(throw_attacker_key), opponent.visual_animation_duration_frames(throw_victim_key))
-				var throw_damage := opponent.receive_throw(throw_move, self, throw_victim_key, paired_throw_frames)
+				var use_paired_visual := paired_throw_frames > 0 and not throw_attacker_key.is_empty() and not throw_victim_key.is_empty()
+				var throw_damage := opponent.receive_throw(throw_move, self, throw_victim_key, paired_throw_frames, not use_paired_visual)
 				if throw_damage > 0:
 					throw_move.set_meta("hit_result", "hit")
 					_gain_meter(throw_move.meter_gain_on_hit)
 					combat_event.emit("%s 投技命中，伤害 %d" % [character_name, throw_damage])
-					if paired_throw_frames > 0:
+					if use_paired_visual:
+						_snap_throw_pair_positions(opponent)
 						_start_throw_lock_visual(throw_attacker_key, paired_throw_frames, false)
+						opponent._start_throw_lock_visual(throw_victim_key, paired_throw_frames, true, throw_move.knockdown_frames, opponent.throw_lock_was_crouching)
 						hitstop_frames = 0
 						opponent.hitstop_frames = 0
 					hit_confirmed.emit(throw_move)
@@ -1198,6 +1211,45 @@ func _gain_meter(amount: int) -> void:
 	if amount <= 0:
 		return
 	meter = mini(METER_MAX, meter + amount)
+
+
+func _gain_meter_from_damage_taken(damage: int, blocked: bool = false) -> void:
+	if damage <= 0:
+		return
+	var meter_gain := float(damage) * float(METER_STOCK_VALUE) / METER_FULL_STOCK_DAMAGE_TAKEN
+	if blocked:
+		meter_gain *= BLOCKED_DAMAGE_METER_SCALE
+	_gain_meter(maxi(1, int(round(meter_gain))))
+
+
+func _snap_throw_pair_positions(target: FighterController) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+	var direction := signf(target.global_position.x - global_position.x)
+	if direction == 0.0:
+		direction = 1.0 if facing_right else -1.0
+	var spacing := clampf(THROW_PAIR_SPACING, MIN_BODY_SPACING * 1.05, MIN_BODY_SPACING * 1.55)
+	var center_x := (global_position.x + target.global_position.x) * 0.5
+	var left_x := center_x - spacing * 0.5
+	var right_x := center_x + spacing * 0.5
+	if left_x < stage_min_x:
+		right_x += stage_min_x - left_x
+		left_x = stage_min_x
+	elif right_x > stage_max_x:
+		left_x -= right_x - stage_max_x
+		right_x = stage_max_x
+	if direction > 0.0:
+		global_position.x = left_x
+		target.global_position.x = right_x
+	else:
+		global_position.x = right_x
+		target.global_position.x = left_x
+	global_position.y = minf(global_position.y, target.global_position.y)
+	target.global_position.y = global_position.y
+	velocity = Vector3.ZERO
+	target.velocity = Vector3.ZERO
+	refresh_facing_from_opponent()
+	target.refresh_facing_from_opponent()
 
 
 func _apply_contact_hitstop(move: MoveDefinition, result: String) -> void:
